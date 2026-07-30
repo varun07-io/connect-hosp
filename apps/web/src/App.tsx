@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/toast";
+import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { Home } from "@/pages/public/Home";
 import { SearchResults } from "@/pages/public/SearchResults";
@@ -31,6 +32,7 @@ import { AdminAuditLog } from "@/pages/admin/AdminAuditLog";
 export default function App() {
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />

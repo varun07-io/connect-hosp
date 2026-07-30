@@ -63,40 +63,64 @@ export function Home() {
       <section className="relative overflow-hidden bg-gradient-to-b from-primary-50 via-background to-background">
         <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-accent-100 blur-3xl" />
         <div className="pointer-events-none absolute -left-32 top-40 h-72 w-72 rounded-full bg-primary-100 blur-3xl" />
-        <div className="container relative pb-14 pt-16 md:pb-16 md:pt-24">
+        <div className="container relative pb-10 pt-10 md:pb-16 md:pt-24">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge variant="accent" className="mb-4">Compare surgery costs across verified hospitals</Badge>
-            <h1 className="text-balance font-display text-4xl font-bold leading-[1.1] md:text-5xl">
+            <Badge variant="accent" className="mb-3">Compare surgery costs across verified hospitals</Badge>
+            <h1 className="text-balance font-display text-3xl font-bold leading-[1.15] sm:text-4xl md:text-5xl md:leading-[1.1]">
               Elective surgery, <span className="text-primary-600">at the right price</span>
             </h1>
-            <p className="mt-4 text-balance text-lg text-muted-foreground">
+            <p className="mt-3 text-balance text-base text-muted-foreground sm:text-lg">
               Compare hospitals by location, surgery cost, doctors and rating — then book a guided callback from a
               real person at the hospital.
             </p>
           </div>
 
-          <form
-            onSubmit={onSearch}
-            className="mx-auto mt-8 flex max-w-xl flex-col gap-2 rounded-2xl border border-border bg-background/90 p-2 shadow-lift backdrop-blur sm:flex-row"
-          >
-            <CityAutocomplete
-              value={city}
-              onChange={setCity}
-              onSelect={(c) => navigate(`/search?city=${encodeURIComponent(c)}`)}
-              popularCities={PILOT_CITIES}
-              placeholder="Search any city in India"
-              className="flex-1"
-              inputClassName="h-11"
-            />
-            <Button type="submit" size="lg" className="w-full sm:w-auto">
-              <Search className="h-4 w-4" />
-              Search hospitals
-            </Button>
-          </form>
+          {/* Location and procedure are the two equally-valid ways to start a
+              search, so they live in one panel, both visible without scrolling —
+              not a hero search bar followed by a separate section further down. */}
+          <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-border bg-background/90 p-3 shadow-lift backdrop-blur sm:p-4">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Search by location</p>
+            <form onSubmit={onSearch} className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <CityAutocomplete
+                value={city}
+                onChange={setCity}
+                onSelect={(c) => navigate(`/search?city=${encodeURIComponent(c)}`)}
+                popularCities={PILOT_CITIES}
+                placeholder="Search any city in India"
+                className="flex-1 rounded-xl border border-border sm:border-0"
+                inputClassName="h-11"
+              />
+              <Button type="submit" size="lg" className="w-full sm:w-auto">
+                <Search className="h-4 w-4" />
+                Search
+              </Button>
+            </form>
 
-          {/* Risk-reducers sit directly under the CTA, where hesitation happens:
-              the three things a patient needs to hear before they'll enquire. */}
-          <div className="mx-auto mt-4 flex max-w-xl flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <div className="my-3 flex items-center gap-3 px-1">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">or browse by procedure</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+              {SURGERY_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.name}
+                  type="button"
+                  onClick={() => navigate(`/search?categories=${encodeURIComponent(cat.name)}`)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
+                >
+                  <cat.icon className="h-4 w-4 text-primary-600" />
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Secondary trust signals — kept below the location+procedure panel
+              on mobile so that panel stays inside the first viewport; they're
+              a short scroll away rather than competing for the same fold. */}
+          <div className="mx-auto mt-4 hidden max-w-xl flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:flex">
             {[
               { icon: ShieldCheck, text: "Verified hospitals only" },
               { icon: Wallet, text: "No booking fee" },
@@ -109,7 +133,7 @@ export function Home() {
             ))}
           </div>
 
-          <div className="mx-auto mt-10 grid max-w-2xl grid-cols-3 divide-x divide-border rounded-xl border border-border bg-background/70 py-4 text-center">
+          <div className="mx-auto mt-6 hidden max-w-2xl grid-cols-3 divide-x divide-border rounded-xl border border-border bg-background/70 py-4 text-center sm:grid md:mt-10">
             <div>
               <p className="font-display text-2xl font-bold text-primary-700">{isLoading ? "—" : `${data?.total ?? 0}+`}</p>
               <p className="text-xs text-muted-foreground">Verified hospitals</p>
@@ -123,25 +147,6 @@ export function Home() {
               <p className="text-xs text-muted-foreground">To a guided callback</p>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="container pb-14 pt-6">
-        <h2 className="text-center font-display text-2xl font-bold">Browse by surgery</h2>
-        <p className="mt-1 text-center text-sm text-muted-foreground">Jump straight to hospitals offering the procedure you need.</p>
-        <div className="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-4">
-          {SURGERY_CATEGORIES.map((cat) => (
-            <button
-              key={cat.name}
-              onClick={() => navigate(`/search?categories=${encodeURIComponent(cat.name)}`)}
-              className="group flex flex-col items-center gap-2 rounded-xl border border-border bg-background p-5 text-center transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-card"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-primary-600 transition-colors group-hover:bg-primary-600 group-hover:text-white">
-                <cat.icon className="h-6 w-6" />
-              </span>
-              <span className="text-sm font-semibold">{cat.name}</span>
-            </button>
-          ))}
         </div>
       </section>
 
