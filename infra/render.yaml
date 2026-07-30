@@ -1,34 +1,35 @@
 # Render Blueprint — deploys the whole POC (API + static frontend + Postgres).
-# Dashboard: "New +" -> "Blueprint" -> point at this repo -> Render reads this file.
+# Dashboard: "New +" -> "Blueprint" -> pick this repo -> Blueprint Path: infra/render.yaml
 #
 # ---------------------------------------------------------------------------
-# WHAT YOU MUST DO BY HAND (Render can't wire cross-service secrets for you)
+# THIS DEPLOYS WITH NO VALUES TO FILL IN.
 # ---------------------------------------------------------------------------
-#  1. `connect-hospital-postgres` -> Environment -> copy the generated
-#     POSTGRES_PASSWORD.
-#  2. `connect-hospital-api` -> Environment -> set:
-#       DATABASE_URL = postgresql://connect:<password>@connect-hospital-postgres:5432/connect_hospital
-#     (services in one blueprint reach each other by service name.)
-#  3. `connect-hospital-api` -> Environment -> set WEB_ORIGIN and API_PUBLIC_URL
-#     to the two public URLs Render assigns, then redeploy. WEB_ORIGIN is the
-#     CORS allow-list, so the frontend cannot call the API until it is correct.
-#  4. `connect-hospital-web` -> Environment -> set VITE_API_URL to the API's
-#     URL, then "Clear build cache & deploy" (Vite bakes it in at build time,
-#     so a plain restart will NOT pick up a change here).
-#  5. Seed the demo data once, from the API service's Shell tab:
-#       npm run db:seed --workspace apps/api
-#     (Schema migration runs automatically via preDeployCommand below.)
+# Every setting the app needs is hard-coded below, because Render's blueprint
+# form runs BEFORE services exist — so a generated DB password or an assigned
+# URL cannot be typed in at that point. Optional integrations (Firebase, SMS,
+# WhatsApp, email, R2) are omitted entirely; the API falls back to its built-in
+# mock providers when they're absent. Add them later in the dashboard.
+#
+# AFTER THE FIRST DEPLOY — 2 checks:
+#   1. Confirm the assigned URLs match the ones hard-coded below. Render appends
+#      a random suffix if a name is already taken globally. If they differ, fix
+#      WEB_ORIGIN + API_PUBLIC_URL on the API, and VITE_API_URL on the web
+#      service. WEB_ORIGIN is the CORS allow-list, so a mismatch means the
+#      frontend loads but every API call fails.
+#      NOTE: after changing VITE_API_URL use "Clear build cache & deploy" —
+#      Vite bakes it in at BUILD time, so a plain restart won't pick it up.
+#   2. Seed the demo data once, from the API service's Shell tab:
+#        npm run db:seed --workspace apps/api
+#      (Schema migration runs automatically via preDeployCommand.)
 #
 # ---------------------------------------------------------------------------
-# COST / PLAN NOTE
+# COST
 # ---------------------------------------------------------------------------
-# Both paid services below are `starter`. That is deliberate:
-#   * Render's FREE web services sleep after ~15 min idle and take ~50s to wake
-#     — which is exactly the "why is it loading so long" problem, in front of a
-#     client. Starter never sleeps.
-#   * Persistent disks (needed for self-managed Postgres) require a paid plan.
-# Static sites are free. Expect roughly $7/mo per paid service.
-# To cut cost between demos, suspend the services rather than downgrading.
+# ~$14.25/mo: API (starter $7) + Postgres (starter $7) + 1GB disk ($0.25).
+# Static site is free. `starter` is deliberate — Render's FREE web services
+# sleep after ~15 min idle and take ~50s to wake, which is exactly the "why is
+# it loading so long" problem, in front of a client. Suspend the services
+# between demos rather than downgrading.
 
 services:
   - type: web
@@ -45,41 +46,34 @@ services:
         value: production
       - key: PORT
         value: "4000"
+
       # --- Demo auth ---------------------------------------------------------
       # This deployment has no Firebase project, so the dev-login switcher is the
-      # ONLY way in. Both flags are required together; see apps/api/src/env.ts.
-      # Set BOTH to false the moment real Firebase auth is configured.
+      # ONLY way in. Both flags are needed together (see apps/api/src/env.ts).
+      # WARNING: anyone with the URL can sign in as any role, including Super
+      # Admin. Fine for seeded fake data; set BOTH to "false" the moment real
+      # Firebase auth is configured or real data exists.
       - key: DEV_AUTH_BYPASS
         value: "true"
       - key: ALLOW_INSECURE_DEMO_AUTH
         value: "true"
-      # -----------------------------------------------------------------------
+
+      # --- Public URLs (verify after first deploy, see note 1 above) ----------
       - key: WEB_ORIGIN
-        sync: false # manual step 3 — the static site's URL (CORS allow-list)
+        value: https://connect-hospital-web.onrender.com
       - key: API_PUBLIC_URL
-        sync: false # manual step 3 — this service's own URL
+        value: https://connect-hospital-api.onrender.com
+
+      # Points at the private Postgres service below by service name. The
+      # password is fixed rather than generated so this URL is knowable before
+      # the services exist. Acceptable only because that service is private
+      # (no public internet route) and holds nothing but seeded demo data —
+      # rotate it before this database sees anything real.
       - key: DATABASE_URL
-        sync: false # manual step 2
+        value: postgresql://connect:ch_demo_7Kq2xR9vLm4TzP8w@connect-hospital-postgres:5432/connect_hospital
+
       - key: FILE_SIGNING_SECRET
         generateValue: true
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false
-      - key: MSG91_AUTH_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: R2_ACCOUNT_ID
-        sync: false
-      - key: R2_ACCESS_KEY_ID
-        sync: false
-      - key: R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: R2_BUCKET
-        sync: false
 
   - type: web
     name: connect-hospital-web
@@ -87,27 +81,19 @@ services:
     buildCommand: npm install && npm run build --workspace packages/shared && npm run build --workspace apps/web
     staticPublishPath: ./apps/web/dist
     envVars:
+      # Baked in at BUILD time — changing this needs a cache-clearing rebuild.
       - key: VITE_API_URL
-        sync: false # manual step 4 — the API's URL. Baked in at BUILD time.
-      - key: VITE_FIREBASE_API_KEY
-        sync: false
-      - key: VITE_FIREBASE_AUTH_DOMAIN
-        sync: false
-      - key: VITE_FIREBASE_PROJECT_ID
-        sync: false
-      - key: VITE_FIREBASE_APP_ID
-        sync: false
+        value: https://connect-hospital-api.onrender.com
     routes:
-      # SPA fallback: every client-side route must serve index.html, or a
-      # deep link / refresh on /search would 404.
+      # SPA fallback: every client-side route must serve index.html, or a deep
+      # link or refresh on /search would 404.
       - type: rewrite
         source: /*
         destination: /index.html
 
-  # Self-managed Postgres on a persistent disk, per the POC cost plan — note
+  # Self-managed Postgres on a persistent disk, per the POC cost plan. Note
   # there are NO automated backups here (unlike Render's managed Postgres
-  # add-on). Schedule your own pg_dump before this holds anything you can't
-  # afford to lose.
+  # add-on) — schedule your own pg_dump before this holds anything real.
   - type: pserv
     name: connect-hospital-postgres
     runtime: image
@@ -122,7 +108,7 @@ services:
       - key: POSTGRES_USER
         value: connect
       - key: POSTGRES_PASSWORD
-        generateValue: true
+        value: ch_demo_7Kq2xR9vLm4TzP8w
       - key: POSTGRES_DB
         value: connect_hospital
       - key: PGDATA
