@@ -36,18 +36,25 @@ jobs:
 
       - run: npm run build:shared
 
-      - name: Prisma generate + sync schema
+      - name: Prisma generate + apply migrations
         run: |
           npm run db:generate --workspace apps/api
-          # `db push` until the first real migration is generated locally
-          # against a live database (see apps/api/README section in the repo
-          # README) — swap for `prisma migrate deploy` once prisma/migrations
-          # exists and is committed.
-          npx prisma db push --schema apps/api/prisma/schema.prisma
-        working-directory: .
+          npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
         env:
           DATABASE_URL: "postgresql://connect:connect@localhost:5432/connect_hospital?schema=public"
 
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+
+  # Builds the API image exactly the way Render does. The node job above cannot
+  # catch build failures specific to a clean checkout — it runs `prisma generate`
+  # up front, which masked a real bug where the API's build script ran `tsc`
+  # BEFORE generating the Prisma client, so every Prisma call typed as `any` and
+  # the Docker build failed on Render while passing locally and in CI.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image (same Dockerfile/context as render.yaml)
+        run: docker build -f apps/api/Dockerfile -t connect-hospital-api:ci .
