@@ -1,0 +1,22 @@
+name: connect-hospital
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: connect
+      POSTGRES_PASSWORD: connect
+      POSTGRES_DB: connect_hospital
+    ports:
+      - "5432:5432"
+    volumes:
+      - connect_hospital_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connect -d connect_hospital"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  connect_hospital_pgdata:

@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgresql://connect:connect@localhost:5432/connect_hospital?schema=public"
+      DEV_AUTH_BYPASS: "true"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: connect
+          POSTGRES_PASSWORD: connect
+          POSTGRES_DB: connect_hospital
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U connect -d connect_hospital"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - run: npm run build:shared
+
+      - name: Prisma generate + sync schema
+        run: |
+          npm run db:generate --workspace apps/api
+          # `db push` until the first real migration is generated locally
+          # against a live database (see apps/api/README section in the repo
+          # README) — swap for `prisma migrate deploy` once prisma/migrations
+          # exists and is committed.
+          npx prisma db push --schema apps/api/prisma/schema.prisma
+        working-directory: .
+        env:
+          DATABASE_URL: "postgresql://connect:connect@localhost:5432/connect_hospital?schema=public"
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
