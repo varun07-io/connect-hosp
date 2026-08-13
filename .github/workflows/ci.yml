@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgresql://connect:connect@localhost:5432/connect_hospital?schema=public"
+      DEV_AUTH_BYPASS: "true"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: connect
+          POSTGRES_PASSWORD: connect
+          POSTGRES_DB: connect_hospital
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U connect -d connect_hospital"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - run: npm run build:shared
+
+      - name: Prisma generate + apply migrations
+        run: |
+          npm run db:generate --workspace apps/api
+          npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+        env:
+          DATABASE_URL: "postgresql://connect:connect@localhost:5432/connect_hospital?schema=public"
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  # Builds the API image exactly the way Render does. The node job above cannot
+  # catch build failures specific to a clean checkout — it runs `prisma generate`
+  # up front, which masked a real bug where the API's build script ran `tsc`
+  # BEFORE generating the Prisma client, so every Prisma call typed as `any` and
+  # the Docker build failed on Render while passing locally and in CI.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image (same Dockerfile/context as render.yaml)
+        run: docker build -f apps/api/Dockerfile -t connect-hospital-api:ci .
