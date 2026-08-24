@@ -38,7 +38,7 @@ const TESTIMONIALS = [
   },
 ];
 
-const DISCLAIMER_KEY = "ch_demo_disclaimer_v2";
+const DISCLAIMER_KEY = "ch_demo_disclaimer_v3";
 
 export function Home() {
   const [city, setCity] = useState("");
