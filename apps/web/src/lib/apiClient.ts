@@ -12,7 +12,7 @@ export class ApiError extends Error {
   }
 }
 
-async function getAuthHeader(): Promise<Record<string, string>> {
+export async function getAuthHeader(): Promise<Record<string, string>> {
   if (firebaseConfigured) {
     const auth = await getFirebaseAuth();
     if (auth?.currentUser) {

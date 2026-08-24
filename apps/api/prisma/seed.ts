@@ -56,11 +56,13 @@ const HOSPITALS = [
 ];
 
 const PATIENTS = [
-  { firebaseUid: "dev-patient-1", name: "Ramesh Kumar", phone: "+919911122233", email: "ramesh@example.com", city: "Bengaluru" },
-  { firebaseUid: "dev-patient-2", name: "Sunita Verma", phone: "+919911122234", email: "sunita@example.com", city: "Mysuru" },
-  { firebaseUid: "dev-patient-3", name: "Arjun Nair", phone: "+919911122235", email: "arjun.nair@example.com", city: "Mangaluru" },
-  { firebaseUid: "dev-patient-4", name: "Kavya Iyer", phone: "+919911122236", email: "kavya.iyer@example.com", city: "Bengaluru" },
-  { firebaseUid: "dev-patient-5", name: "Rohit Sharma", phone: "+919911122237", email: "rohit.sharma@example.com", city: "Hubballi" },
+  { firebaseUid: "dev-patient-1", name: "Ramesh Kumar",   phone: "+919911122233", email: "ramesh@example.com",        city: "Bengaluru" },
+  { firebaseUid: "dev-patient-2", name: "Sunita Verma",   phone: "+919911122234", email: "sunita@example.com",        city: "Mysuru" },
+  { firebaseUid: "dev-patient-3", name: "Arjun Nair",     phone: "+919911122235", email: "arjun.nair@example.com",    city: "Mangaluru" },
+  { firebaseUid: "dev-patient-4", name: "Kavya Iyer",     phone: "+919911122236", email: "kavya.iyer@example.com",    city: "Bengaluru" },
+  { firebaseUid: "dev-patient-5", name: "Rohit Sharma",   phone: "+919911122237", email: "rohit.sharma@example.com",  city: "Hubballi" },
+  { firebaseUid: "dev-patient-6", name: "Priya Menon",    phone: "+919911122238", email: "priya.menon@example.com",   city: "Bengaluru" },
+  { firebaseUid: "dev-patient-7", name: "Suresh Pillai",  phone: "+919911122239", email: "suresh.pillai@example.com", city: "Mysuru" },
 ];
 
 // One full pass of the BKG-06 lifecycle plus its side-states, so every
@@ -292,6 +294,355 @@ async function main() {
     }
   }
 
+  console.log("Seeding field executives...");
+  const firstApprovedHospital = approvedHospitals[0];
+
+  const feHospitalUser = await prisma.user.upsert({
+    where: { firebaseUid: "dev-fe-hospital-1" },
+    update: {},
+    create: {
+      firebaseUid: "dev-fe-hospital-1",
+      role: "FIELD_EXECUTIVE_HOSPITAL",
+      name: "Meera Pillai (FE-Hospital)",
+      email: "meera.fe@connecthospital.in.example",
+      phone: "+919988776601",
+      hospitalId: firstApprovedHospital?.id ?? null,
+    },
+  });
+  await prisma.fieldExecutive.upsert({
+    where: { userId: feHospitalUser.id },
+    update: {},
+    create: {
+      userId: feHospitalUser.id,
+      feType: "HOSPITAL",
+      hospitalId: firstApprovedHospital?.id ?? null,
+      status: "ACTIVE",
+      kycVerified: true,
+    },
+  });
+  seededUsers.push({ role: "FIELD_EXECUTIVE_HOSPITAL", name: feHospitalUser.name, id: feHospitalUser.id });
+
+  const feConnectUser = await prisma.user.upsert({
+    where: { firebaseUid: "dev-fe-connect-1" },
+    update: {},
+    create: {
+      firebaseUid: "dev-fe-connect-1",
+      role: "FIELD_EXECUTIVE_CONNECT",
+      name: "Rajan Das (FE-Connect)",
+      email: "rajan.fe@connecthospital.in.example",
+      phone: "+919988776602",
+    },
+  });
+  const feConnectProfile = await prisma.fieldExecutive.upsert({
+    where: { userId: feConnectUser.id },
+    update: {},
+    create: {
+      userId: feConnectUser.id,
+      feType: "CONNECT_HOSPITAL",
+      status: "ACTIVE",
+      kycVerified: true,
+    },
+  });
+  seededUsers.push({ role: "FIELD_EXECUTIVE_CONNECT", name: feConnectUser.name, id: feConnectUser.id });
+
+  const feManagerUser = await prisma.user.upsert({
+    where: { firebaseUid: "dev-fe-manager-1" },
+    update: {},
+    create: {
+      firebaseUid: "dev-fe-manager-1",
+      role: "FE_MANAGER",
+      name: "Kavitha Srinivas (FE Manager)",
+      email: "kavitha.mgr@connecthospital.in.example",
+      phone: "+919988776603",
+    },
+  });
+  await prisma.fieldExecutive.upsert({
+    where: { userId: feManagerUser.id },
+    update: {},
+    create: {
+      userId: feManagerUser.id,
+      feType: "CONNECT_HOSPITAL",
+      status: "ACTIVE",
+      kycVerified: true,
+    },
+  });
+  seededUsers.push({ role: "FE_MANAGER", name: feManagerUser.name, id: feManagerUser.id });
+
+  // Seed rich FE queue data so both the dashboard stats and activity feed are populated.
+  const allEnquiries = await prisma.enquiry.findMany({
+    where: { feQueueId: null },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    include: { patient: { select: { name: true } }, hospital: { select: { name: true } } },
+  });
+
+  type QueueSpec = {
+    feId: string;
+    followUpStatus: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ESCALATED";
+    admissionRef?: string;
+    daysAgo: number;
+    logs: { actionType: "PHONE_CALL" | "PHYSICAL_VISIT" | "DOCUMENT_COLLECTED" | "ADMISSION_CONFIRMED" | "OTHER"; notes: string; daysAgo: number }[];
+  };
+
+  const QUEUE_SPECS: QueueSpec[] = [
+    {
+      feId: feConnectProfile.id,
+      followUpStatus: "IN_PROGRESS",
+      daysAgo: 5,
+      logs: [
+        { actionType: "PHONE_CALL",          notes: "Called patient — confirmed interest in Knee Replacement. Requested medical records.",      daysAgo: 5 },
+        { actionType: "DOCUMENT_COLLECTED",  notes: "Collected X-ray reports and referral letter from patient's home.",                         daysAgo: 3 },
+        { actionType: "PHONE_CALL",          notes: "Followed up on admission date. Patient awaiting family confirmation.",                     daysAgo: 1 },
+      ],
+    },
+    {
+      feId: feConnectProfile.id,
+      followUpStatus: "COMPLETED",
+      admissionRef: "ADM-2024-0041",
+      daysAgo: 8,
+      logs: [
+        { actionType: "PHONE_CALL",          notes: "Initial call — patient confirmed surgery date available next week.",                        daysAgo: 8 },
+        { actionType: "PHYSICAL_VISIT",      notes: "Visited patient at home, explained hospital admission process end-to-end.",                daysAgo: 6 },
+        { actionType: "DOCUMENT_COLLECTED",  notes: "Collected Aadhaar, insurance card, and previous prescription.",                           daysAgo: 5 },
+        { actionType: "ADMISSION_CONFIRMED", notes: "Admission confirmed at Sunrise Hospital. Ref ADM-2024-0041.",                             daysAgo: 4 },
+      ],
+    },
+    {
+      feId: feConnectProfile.id,
+      followUpStatus: "ESCALATED",
+      daysAgo: 3,
+      logs: [
+        { actionType: "PHONE_CALL",          notes: "Called twice — no response. Sent WhatsApp message.",                                      daysAgo: 3 },
+        { actionType: "PHONE_CALL",          notes: "Third attempt — patient picked up but disconnected after 10 seconds.",                    daysAgo: 2 },
+        { actionType: "OTHER",               notes: "Escalated to FE Manager — patient unreachable for 3 days.",                              daysAgo: 1 },
+      ],
+    },
+    {
+      feId: feConnectProfile.id,
+      followUpStatus: "NOT_STARTED",
+      daysAgo: 1,
+      logs: [],
+    },
+    {
+      feId: feConnectProfile.id,
+      followUpStatus: "IN_PROGRESS",
+      daysAgo: 2,
+      logs: [
+        { actionType: "PHONE_CALL",          notes: "First contact made. Patient asked for a callback tomorrow morning.",                      daysAgo: 2 },
+      ],
+    },
+    {
+      feId: feHospitalUser.id,  // will resolve to feHospitalProfile below
+      followUpStatus: "IN_PROGRESS",
+      daysAgo: 4,
+      logs: [
+        { actionType: "PHYSICAL_VISIT",      notes: "Met patient at hospital OPD. Guided through admission paperwork.",                        daysAgo: 4 },
+        { actionType: "DOCUMENT_COLLECTED",  notes: "Received all mandatory documents. Submitted to admission desk.",                          daysAgo: 2 },
+      ],
+    },
+    {
+      feId: feHospitalUser.id,
+      followUpStatus: "COMPLETED",
+      admissionRef: "ADM-2024-0055",
+      daysAgo: 7,
+      logs: [
+        { actionType: "PHONE_CALL",          notes: "Introduced self and explained next steps for the surgery booking.",                       daysAgo: 7 },
+        { actionType: "DOCUMENT_COLLECTED",  notes: "Docs collected — ID, referral letter, past lab reports.",                                daysAgo: 6 },
+        { actionType: "ADMISSION_CONFIRMED", notes: "Patient admitted successfully. Ref ADM-2024-0055.",                                      daysAgo: 5 },
+      ],
+    },
+    {
+      feId: feHospitalUser.id,
+      followUpStatus: "NOT_STARTED",
+      daysAgo: 0,
+      logs: [],
+    },
+  ];
+
+  // Get the FieldExecutive profile id for the hospital FE (we only have userId above)
+  const feHospitalProfile = await prisma.fieldExecutive.findUnique({ where: { userId: feHospitalUser.id } });
+
+  for (let i = 0; i < QUEUE_SPECS.length; i++) {
+    const spec = QUEUE_SPECS[i];
+    const enquiry = allEnquiries[i];
+    if (!enquiry) continue;
+    if (enquiry.feQueueId) continue;
+
+    // Resolve the actual FieldExecutive profile id
+    const actualFeId = spec.feId === feHospitalUser.id ? feHospitalProfile?.id : feConnectProfile.id;
+    if (!actualFeId) continue;
+
+    const queue = await prisma.feBookingQueue.create({
+      data: {
+        feId: actualFeId,
+        assignedAt: new Date(Date.now() - spec.daysAgo * 24 * 60 * 60 * 1000),
+        followUpStatus: spec.followUpStatus,
+        admissionRef: spec.admissionRef ?? null,
+      },
+    });
+    await prisma.enquiry.update({ where: { id: enquiry.id }, data: { feQueueId: queue.id } });
+
+    for (const log of spec.logs) {
+      await prisma.feFollowUpLog.create({
+        data: {
+          feQueueId: queue.id,
+          feId: actualFeId,
+          actionType: log.actionType,
+          notes: log.notes,
+          followUpDate: new Date(Date.now() - (log.daysAgo - 1) * 24 * 60 * 60 * 1000),
+          createdAt: new Date(Date.now() - log.daysAgo * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+
+  console.log("Seeding extra hospital enquiries for Sunrise (boosts hospital dashboard)...");
+  const sunriseHospital = await prisma.hospital.findUnique({ where: { slug: "sunrise-multispeciality-hospital" } });
+  const sunriseDoctors = sunriseHospital
+    ? await prisma.doctor.findMany({ where: { hospitalId: sunriseHospital.id } })
+    : [];
+  const sunriseTreatments = sunriseHospital
+    ? await prisma.hospitalTreatmentPrice.findMany({ where: { hospitalId: sunriseHospital.id }, include: { treatment: true } })
+    : [];
+
+  const EXTRA_ENQUIRY_STATUSES: EnquiryStatus[] = ["NEW", "ACKNOWLEDGED", "ASSIGNED", "CONTACTED", "GUIDED", "CLOSED", "CANCELLED", "NO_RESPONSE", "REOPENED"];
+  const EXTRA_CONDITIONS = [
+    "Severe knee pain after sports injury, MRI suggests meniscus tear.",
+    "Cardiologist recommended bypass evaluation — second opinion needed.",
+    "Post-surgery follow-up for hernia repair done elsewhere.",
+    "Recurring back pain, physiotherapy not helping. Considering surgery.",
+    "Hip arthritis — difficulty walking more than 200 m. Family referred this hospital.",
+    "Pre-diabetic with cardiac symptoms. Needs comprehensive evaluation.",
+    "Appendix pain diagnosed, surgeon recommended laparoscopic removal.",
+    "Looking for cost comparison for knee replacement across Bengaluru hospitals.",
+  ];
+
+  if (sunriseHospital && patientUsers.length > 0) {
+    for (let i = 0; i < 8; i++) {
+      const patient = pick(patientUsers, i + 10);
+      const tp = pick(sunriseTreatments, i);
+      const status = pick(EXTRA_ENQUIRY_STATUSES, i);
+      const intent: EnquiryIntent = i % 3 === 0 ? "SECOND_OPINION" : "SURGERY";
+      const needsDoctor = !["NEW", "ACKNOWLEDGED", "CANCELLED"].includes(status) && sunriseDoctors.length > 0;
+      const doctor = needsDoctor ? pick(sunriseDoctors, i) : null;
+
+      const alreadyExists = await prisma.enquiry.findFirst({
+        where: { patientId: patient.id, hospitalId: sunriseHospital.id, treatmentId: tp.treatmentId, intent },
+      });
+      if (alreadyExists) continue;
+
+      let callbackOutcome: CallbackOutcome | null = null;
+      let callbackNotes: string | null = null;
+      if (["CONTACTED", "GUIDED", "CLOSED"].includes(status)) {
+        callbackOutcome = "REACHED";
+        callbackNotes = "Patient spoke with Dr. Anita Rao. Procedure cost and recovery time explained in detail.";
+      } else if (status === "NO_RESPONSE") {
+        callbackOutcome = "NOT_REACHED";
+        callbackNotes = "Called three times over two days — no response. WhatsApp sent.";
+      }
+
+      await prisma.enquiry.create({
+        data: {
+          patientId: patient.id,
+          hospitalId: sunriseHospital.id,
+          treatmentId: tp.treatmentId,
+          intent,
+          condition: pick(EXTRA_CONDITIONS, i),
+          preferredCallbackWindow: i % 2 === 0 ? "Mornings 9am-12pm" : "Evenings 5pm-8pm",
+          status,
+          assignedDoctorId: doctor?.id ?? null,
+          callbackOutcome,
+          callbackNotes,
+          createdAt: new Date(Date.now() - (i + 1) * 18 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+
+  console.log("Seeding FE Manager view data (unassigned queue entries + cross-FE audit)...");
+  // Create 3 unassigned queue entries — manager's job is to assign these.
+  const unassignedEnquiries = await prisma.enquiry.findMany({
+    where: { feQueueId: null, status: { in: ["GUIDED", "CLOSED"] } },
+    take: 3,
+    orderBy: { createdAt: "desc" },
+  });
+
+  for (const enquiry of unassignedEnquiries) {
+    const queue = await prisma.feBookingQueue.create({
+      data: { feId: null, followUpStatus: "NOT_STARTED" },
+    });
+    await prisma.enquiry.update({ where: { id: enquiry.id }, data: { feQueueId: queue.id } });
+  }
+
+  // Add audit logs so the manager's admin overview reflects activity.
+  const feManagerProfile = await prisma.fieldExecutive.findUnique({ where: { userId: feManagerUser.id } });
+  if (feManagerProfile && feConnectProfile) {
+    const allQueues = await prisma.feBookingQueue.findMany({ where: { feId: feConnectProfile.id }, take: 2 });
+    for (const q of allQueues) {
+      await prisma.auditLog.create({
+        data: {
+          actorId: feManagerUser.id,
+          action: "FE_ASSIGNED",
+          entityType: "FeBookingQueue",
+          entityId: q.id,
+          before: { feId: null },
+          after: { feId: feConnectProfile.id },
+        },
+      });
+    }
+  }
+
+  // Seed extra doctors for Sunrise so hospital dashboard "Doctors" stat is richer.
+  const EXTRA_DOCTOR_NAMES = ["Suresh Babu", "Lakshmi Devi", "Harish Patel"];
+  if (sunriseHospital) {
+    for (const [i, dName] of EXTRA_DOCTOR_NAMES.entries()) {
+      const uid = `dev-doctor-sunrise-extra-${i}`;
+      const existing = await prisma.user.findUnique({ where: { firebaseUid: uid } });
+      if (existing) continue;
+      const du = await prisma.user.create({
+        data: {
+          firebaseUid: uid,
+          role: "DOCTOR",
+          name: `Dr. ${dName}`,
+          email: `dr.${dName.split(" ")[0].toLowerCase()}@sunrise-multispeciality-hospital.example`,
+          hospitalId: sunriseHospital.id,
+        },
+      });
+      await prisma.doctor.create({
+        data: {
+          userId: du.id,
+          hospitalId: sunriseHospital.id,
+          specialisation: pick(["Orthopaedics", "Cardiology", "General Surgery"], i),
+          qualifications: "MBBS, MS, DNB",
+          experienceYears: 8 + i * 2,
+          bio: "Senior consultant with expertise in complex surgical cases and minimally invasive techniques.",
+        },
+      });
+    }
+  }
+
+  // Seed notification records for hospital enquiries (so notification log isn't empty).
+  const recentEnquiries = await prisma.enquiry.findMany({
+    where: { hospitalId: sunriseHospital?.id },
+    take: 5,
+    include: { patient: { select: { phone: true, email: true } } },
+  });
+  for (const [i, enq] of recentEnquiries.entries()) {
+    const notifExists = await prisma.notification.findFirst({ where: { enquiryId: enq.id } });
+    if (notifExists) continue;
+    await prisma.notification.create({
+      data: {
+        enquiryId: enq.id,
+        recipient: enq.patient.phone ?? enq.patient.email ?? "unknown",
+        channel: i % 2 === 0 ? "SMS" : "WHATSAPP",
+        template: "enquiry_received",
+        status: i === 0 ? "QUEUED" : "DELIVERED",
+        providerRef: i > 0 ? `msg91-${Date.now()}-${i}` : null,
+        sentAt: i > 0 ? new Date(Date.now() - i * 60 * 60 * 1000) : null,
+      },
+    });
+  }
+
   console.log("Seeding support tickets...");
   const ticketPatient = patientUsers[0];
   const ticketPatient2 = patientUsers[1];
@@ -327,6 +678,53 @@ async function main() {
           entityId: ticket.id,
           before: { status: "OPEN" },
           after: { status: t.status },
+        },
+      });
+    }
+  }
+
+  console.log("Seeding demo payment records (so patient payment history is not empty)...");
+  // Pick the first 3 patients and link a payment to one of their enquiries.
+  const PAYMENT_SEED = [
+    { status: "VERIFIED" as const,         amount: 5000,  gatewayPaymentId: "pay_demo_001" },
+    { status: "REFUND_INITIATED" as const,  amount: 3000,  gatewayPaymentId: "pay_demo_002" },
+    { status: "PENDING" as const,           amount: 7500,  gatewayPaymentId: null },
+  ];
+  for (let pi = 0; pi < Math.min(patientUsers.length, PAYMENT_SEED.length); pi++) {
+    const spec = PAYMENT_SEED[pi];
+    const patient = patientUsers[pi];
+    // Find an enquiry for this patient that has no payment yet.
+    const enquiry = await prisma.enquiry.findFirst({
+      where: { patientId: patient.id, paymentId: null },
+    });
+    if (!enquiry) continue;
+
+    const existingPay = await prisma.payment.findFirst({ where: { gatewayOrderId: `order_demo_${pi + 1}` } });
+    if (existingPay) continue;
+
+    const payment = await prisma.payment.create({
+      data: {
+        amount: spec.amount,
+        currency: "INR",
+        gateway: "razorpay",
+        gatewayOrderId: `order_demo_${pi + 1}`,
+        gatewayPaymentId: spec.gatewayPaymentId,
+        status: spec.status,
+        verifiedAt: spec.status === "VERIFIED" || spec.status === "REFUND_INITIATED" ? new Date(Date.now() - pi * 24 * 60 * 60 * 1000) : null,
+      },
+    });
+    await prisma.enquiry.update({ where: { id: enquiry.id }, data: { paymentId: payment.id } });
+
+    // Add a refund row for the REFUND_INITIATED payment.
+    if (spec.status === "REFUND_INITIATED") {
+      await prisma.paymentRefund.create({
+        data: {
+          paymentId: payment.id,
+          amount: spec.amount,
+          reason: "Patient cancelled before admission",
+          refundType: "PATIENT_CANCEL",
+          status: "INITIATED",
+          initiatedById: staffUsers["SUPER_ADMIN"],
         },
       });
     }

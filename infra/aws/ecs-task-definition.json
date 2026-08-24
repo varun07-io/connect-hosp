@@ -1,0 +1,53 @@
+{
+  "family": "connect-hospital-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/connect-hospital-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/connect-hospital-ecs-task",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/connect-hospital-api:latest",
+      "portMappings": [{ "containerPort": 4000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "4000" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL",           "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/DATABASE_URL" },
+        { "name": "FIREBASE_PROJECT_ID",    "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/FIREBASE_PROJECT_ID" },
+        { "name": "FIREBASE_CLIENT_EMAIL",  "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/FIREBASE_CLIENT_EMAIL" },
+        { "name": "FIREBASE_PRIVATE_KEY",   "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/FIREBASE_PRIVATE_KEY" },
+        { "name": "AWS_REGION",             "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/AWS_REGION" },
+        { "name": "AWS_ACCESS_KEY_ID",      "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/AWS_ACCESS_KEY_ID" },
+        { "name": "AWS_SECRET_ACCESS_KEY",  "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/AWS_SECRET_ACCESS_KEY" },
+        { "name": "S3_BUCKET_MEDICAL",      "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/S3_BUCKET_MEDICAL" },
+        { "name": "S3_BUCKET_KYC",          "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/S3_BUCKET_KYC" },
+        { "name": "S3_BUCKET_HOSPITAL_DOCS","valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/S3_BUCKET_HOSPITAL_DOCS" },
+        { "name": "S3_BUCKET_PAYMENT_RECEIPTS","valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/S3_BUCKET_PAYMENT_RECEIPTS" },
+        { "name": "RAZORPAY_KEY_ID",        "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/RAZORPAY_KEY_ID" },
+        { "name": "RAZORPAY_KEY_SECRET",    "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/RAZORPAY_KEY_SECRET" },
+        { "name": "RAZORPAY_WEBHOOK_SECRET","valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/RAZORPAY_WEBHOOK_SECRET" },
+        { "name": "FILE_SIGNING_SECRET",    "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/FILE_SIGNING_SECRET" },
+        { "name": "MSG91_AUTH_KEY",         "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/MSG91_AUTH_KEY" },
+        { "name": "RESEND_API_KEY",         "valueFrom": "arn:aws:secretsmanager:ap-south-1:ACCOUNT_ID:secret:connect-hospital/RESEND_API_KEY" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/connect-hospital-api",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "api"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3
+      }
+    }
+  ]
+}

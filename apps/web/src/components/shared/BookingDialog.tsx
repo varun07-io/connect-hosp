@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, CreditCard } from "lucide-react";
 import type { EnquiryIntent } from "@connect-hospital/shared";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { useCreateEnquiry } from "@/hooks/useApiMutations";
+import { RazorpayCheckout } from "@/components/shared/RazorpayCheckout";
 import { cn } from "@/lib/utils";
 
 interface BookingDialogProps {
@@ -19,24 +20,29 @@ interface BookingDialogProps {
   hospitalName: string;
   treatments: { id: string; name: string }[];
   defaultIntent: EnquiryIntent;
+  depositRequired?: boolean;
 }
 
-export function BookingDialog({ open, onOpenChange, hospitalId, hospitalName, treatments, defaultIntent }: BookingDialogProps) {
+type Step = "form" | "payment" | "done";
+
+export function BookingDialog({ open, onOpenChange, hospitalId, hospitalName, treatments, defaultIntent, depositRequired }: BookingDialogProps) {
   const { me } = useAuth();
   const navigate = useNavigate();
   const createEnquiry = useCreateEnquiry();
 
+  const [step, setStep] = React.useState<Step>("form");
+  const [enquiryId, setEnquiryId] = React.useState<string | null>(null);
   const [intent, setIntent] = React.useState<EnquiryIntent>(defaultIntent);
   const [treatmentId, setTreatmentId] = React.useState<string>("none");
   const [condition, setCondition] = React.useState("");
   const [callbackWindow, setCallbackWindow] = React.useState("Weekdays, 10am - 1pm");
   const [consent, setConsent] = React.useState(false);
-  const [submitted, setSubmitted] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
       setIntent(defaultIntent);
-      setSubmitted(false);
+      setStep("form");
+      setEnquiryId(null);
       createEnquiry.reset();
     }
   }, [open, defaultIntent]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -55,14 +61,24 @@ export function BookingDialog({ open, onOpenChange, hospitalId, hospitalName, tr
         preferredCallbackWindow: callbackWindow,
         consentAccepted: true,
       },
-      { onSuccess: () => setSubmitted(true) },
+      {
+        onSuccess: (data) => {
+          const id = (data as { id?: string })?.id;
+          if (depositRequired && id) {
+            setEnquiryId(id);
+            setStep("payment");
+          } else {
+            setStep("done");
+          }
+        },
+      },
     );
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        {submitted ? (
+        {step === "done" && (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-success" />
             <DialogTitle>Enquiry sent to {hospitalName}</DialogTitle>
@@ -75,7 +91,33 @@ export function BookingDialog({ open, onOpenChange, hospitalId, hospitalName, tr
               <Button onClick={() => navigate("/patient")}>View my enquiries</Button>
             </div>
           </div>
-        ) : (
+        )}
+
+        {step === "payment" && enquiryId && (
+          <div className="flex flex-col gap-4 py-4">
+            <DialogHeader>
+              <DialogTitle>Pay deposit to confirm</DialogTitle>
+              <DialogDescription>
+                {hospitalName} requires a deposit to confirm your booking. Your enquiry is saved — pay now to lock it in.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              A deposit is required to secure your {intent === "SURGERY" ? "surgery booking" : "second opinion"} with this hospital.
+            </div>
+            <RazorpayCheckout
+              enquiryId={enquiryId}
+              patientName={me.user.name}
+              patientEmail={me.user.email ?? undefined}
+              onSuccess={() => setStep("done")}
+            />
+            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setStep("done")}>
+              Skip for now (pay later from dashboard)
+            </Button>
+          </div>
+        )}
+
+        {step === "form" && (
           <form onSubmit={submit}>
             <DialogHeader>
               <DialogTitle>{intent === "SURGERY" ? "Book a visit" : "Get a second opinion"}</DialogTitle>
@@ -147,8 +189,16 @@ export function BookingDialog({ open, onOpenChange, hospitalId, hospitalName, tr
                 I consent to share my details with {hospitalName} so a doctor can call me back.
               </label>
 
+              {depositRequired && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                  This hospital requires a deposit to confirm bookings. You'll be prompted to pay after submitting.
+                </p>
+              )}
+
               {createEnquiry.isError && (
-                <p className="text-sm text-destructive">Something went wrong — please try again.</p>
+                <p className="text-sm text-destructive">
+                  {(createEnquiry.error as { message?: string })?.message ?? "Something went wrong — please try again."}
+                </p>
               )}
             </div>
 
@@ -158,7 +208,7 @@ export function BookingDialog({ open, onOpenChange, hospitalId, hospitalName, tr
               </Button>
               <Button type="submit" disabled={!consent || !condition.trim() || createEnquiry.isPending}>
                 {createEnquiry.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Submit enquiry
+                {depositRequired ? "Continue to payment" : "Submit enquiry"}
               </Button>
             </DialogFooter>
           </form>

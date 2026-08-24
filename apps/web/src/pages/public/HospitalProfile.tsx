@@ -103,6 +103,7 @@ export function HospitalProfile() {
         hospitalName={hospital.name}
         treatments={hospital.treatmentPrices.map((p) => ({ id: p.treatment.id, name: p.treatment.name }))}
         defaultIntent={bookingIntent}
+        depositRequired={hospital.depositRequired}
       />
 
       <div className="container grid gap-8 py-8 lg:grid-cols-[1fr_320px]">

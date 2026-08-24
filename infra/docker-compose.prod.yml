@@ -1,0 +1,41 @@
+# Production Docker Compose — for local smoke-testing only.
+# In real production, API runs on ECS Fargate; DB is RDS Postgres; secrets come from Secrets Manager.
+
+name: connect-hospital-prod
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+      API_PUBLIC_URL: ${API_PUBLIC_URL}
+      DEV_AUTH_BYPASS: "false"
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_MEDICAL: ${S3_BUCKET_MEDICAL}
+      S3_BUCKET_KYC: ${S3_BUCKET_KYC}
+      S3_BUCKET_HOSPITAL_DOCS: ${S3_BUCKET_HOSPITAL_DOCS}
+      S3_BUCKET_PAYMENT_RECEIPTS: ${S3_BUCKET_PAYMENT_RECEIPTS}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      FILE_SIGNING_SECRET: ${FILE_SIGNING_SECRET}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

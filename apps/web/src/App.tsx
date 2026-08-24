@@ -11,6 +11,7 @@ import { NotFound } from "@/pages/public/NotFound";
 import { PatientLayout } from "@/pages/patient/PatientLayout";
 import { PatientEnquiries } from "@/pages/patient/PatientEnquiries";
 import { PatientVault } from "@/pages/patient/PatientVault";
+import { PatientPayments } from "@/pages/patient/PatientPayments";
 
 import { HospitalLayout } from "@/pages/hospital/HospitalLayout";
 import { HospitalOverview } from "@/pages/hospital/HospitalOverview";
@@ -29,6 +30,13 @@ import { AdminLayout } from "@/pages/admin/AdminLayout";
 import { AdminOverview } from "@/pages/admin/AdminOverview";
 import { AdminAuditLog } from "@/pages/admin/AdminAuditLog";
 
+import { FeLayout } from "@/pages/fe/FeLayout";
+import { FeDashboard } from "@/pages/fe/FeDashboard";
+import { FeQueue } from "@/pages/fe/FeQueue";
+
+import { PatientKyc } from "@/pages/kyc/PatientKyc";
+import { KycReviewQueue } from "@/pages/kyc/KycReviewQueue";
+
 export default function App() {
   return (
     <>
@@ -44,6 +52,8 @@ export default function App() {
         <Route path="/patient" element={<PatientLayout />}>
           <Route index element={<PatientEnquiries />} />
           <Route path="vault" element={<PatientVault />} />
+          <Route path="kyc" element={<PatientKyc />} />
+          <Route path="payments" element={<PatientPayments />} />
         </Route>
 
         <Route path="/hospital" element={<HospitalLayout />}>
@@ -66,6 +76,12 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminOverview />} />
           <Route path="audit-log" element={<AdminAuditLog />} />
+          <Route path="kyc" element={<KycReviewQueue />} />
+        </Route>
+
+        <Route path="/fe" element={<FeLayout />}>
+          <Route index element={<FeDashboard />} />
+          <Route path="queue" element={<FeQueue />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

@@ -1,0 +1,25 @@
+{
+  "_comment": "Replace ACCOUNT_ID and bucket names. Apply to each bucket individually.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowEcsTaskRole",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::ACCOUNT_ID:role/connect-hospital-ecs-task" },
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::BUCKET_NAME/*"
+    },
+    {
+      "Sid": "DenyPublicAccess",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::BUCKET_NAME/*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::ACCOUNT_ID:role/connect-hospital-ecs-task"
+        }
+      }
+    }
+  ]
+}

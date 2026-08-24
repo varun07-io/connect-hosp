@@ -36,11 +36,25 @@ const envSchema = z.object({
   MSG91_AUTH_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
 
-  // Storage providers (Phase 2). Absent => LocalDiskStorageProvider is used.
+  // Storage providers (Phase 2). R2 (legacy) or AWS S3 — absent => LocalDiskStorageProvider.
   R2_ACCOUNT_ID: z.string().optional(),
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
+
+  // AWS S3 — used when R2 vars are absent and AWS_REGION + AWS_ACCESS_KEY_ID are set.
+  AWS_REGION: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_BUCKET_MEDICAL: z.string().optional(),
+  S3_BUCKET_KYC: z.string().optional(),
+  S3_BUCKET_HOSPITAL_DOCS: z.string().optional(),
+  S3_BUCKET_PAYMENT_RECEIPTS: z.string().optional(),
+
+  // Razorpay — required in production when paymentRequired=true hospitals exist.
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
   // Signs the expiring download links the LocalDiskStorageProvider issues for
   // the medical-records vault (VLT-06). Any string is fine for local dev; set a

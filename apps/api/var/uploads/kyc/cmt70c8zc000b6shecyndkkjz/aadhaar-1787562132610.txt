@@ -1,0 +1,3 @@
+DigiLocker document: Aadhaar Card
+Fetched on: 2026-08-24T09:02:12.574Z
+[This is a placeholder for the actual document fetched via DigiLocker API]

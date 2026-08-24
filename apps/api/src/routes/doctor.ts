@@ -3,6 +3,7 @@ import { logCallbackSchema } from "@connect-hospital/shared";
 import type { EnquiryStatus } from "@connect-hospital/shared";
 import { transitionEnquiry, notifyEnquiry } from "../lib/enquiryEvents.js";
 import { recordAudit } from "../lib/audit.js";
+import { onBookingPaid } from "../lib/feAssignmentEngine.js";
 
 /** DOC module — assigned-enquiry list (DOC-02/03) plus callback logging (DOC-04/05). */
 export default async function doctorRoutes(app: FastifyInstance) {
@@ -56,6 +57,11 @@ export default async function doctorRoutes(app: FastifyInstance) {
         actorId: request.authUser!.id,
         note: parsed.data.notes,
       });
+
+      // When enquiry closes as GUIDED, push it into the FE queue (fire-and-forget).
+      if (nextStatus === "GUIDED") {
+        onBookingPaid(app.prisma, id).catch(() => null);
+      }
 
       const patient = await app.prisma.user.findUnique({ where: { id: enquiry.patientId } });
       if (patient?.email) {

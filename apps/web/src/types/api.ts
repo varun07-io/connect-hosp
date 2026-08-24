@@ -79,6 +79,9 @@ export interface HospitalProfileResponse {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  depositRequired: boolean;
+  depositAmountSurgery: number;
+  depositAmountSecondOpinion: number;
   doctors: DoctorSummary[];
   treatmentPrices: HospitalTreatmentPrice[];
   reviews: Review[];

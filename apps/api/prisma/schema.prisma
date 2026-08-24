@@ -1,6 +1,4 @@
-// Connect Hospital POC — data model.
-// Traces to Appendix B of Connect Hospital Scope.pdf, extended with the
-// status/audit tables the modules in Section 6 actually need.
+// Connect Hospital — Phase 2 extended data model.
 
 generator client {
   provider = "prisma-client-js"
@@ -18,6 +16,9 @@ enum Role {
   VERIFICATION
   SUPPORT
   SUPER_ADMIN
+  FIELD_EXECUTIVE_HOSPITAL
+  FIELD_EXECUTIVE_CONNECT
+  FE_MANAGER
 }
 
 enum HospitalStatus {
@@ -77,37 +78,120 @@ enum CallbackOutcome {
   CALL_BACK_LATER
 }
 
-/// Every human who can sign in. Firebase Auth proves identity;
-/// role + hospital scoping live here (Section 5, Role & Permissions Principle).
+// ─── Phase 2 enums ───────────────────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  REFUND_INITIATED
+  REFUNDED
+}
+
+enum RefundType {
+  SLA_AUTO
+  PATIENT_CANCEL
+  DISPUTE
+  MANUAL
+}
+
+enum RefundStatus {
+  INITIATED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum KycStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum KycType {
+  PATIENT
+  STAFF
+}
+
+enum KycMethod {
+  DIGILOCKER
+  MANUAL
+}
+
+enum KycDocType {
+  AADHAAR
+  PAN
+  VOTER_ID
+  PASSPORT
+  MCI_CERT
+  HOSPITAL_AUTH
+  EMPLOYEE_ID
+}
+
+enum FeType {
+  HOSPITAL
+  CONNECT_HOSPITAL
+}
+
+enum FeAccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum FollowUpStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ESCALATED
+}
+
+enum FollowUpActionType {
+  PHONE_CALL
+  PHYSICAL_VISIT
+  DOCUMENT_COLLECTED
+  ADMISSION_CONFIRMED
+  OTHER
+}
+
+// ─── Core models ─────────────────────────────────────────────────────────────
+
 model User {
-  id          String   @id @default(cuid())
-  firebaseUid String   @unique
-  role        Role
-  name        String
-  email       String?  @unique
-  phone       String?  @unique
-  status      String   @default("ACTIVE") // ACTIVE | SUSPENDED
-  hospitalId  String?
-  hospital    Hospital? @relation("HospitalStaff", fields: [hospitalId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  firebaseUid  String    @unique
+  role         Role
+  name         String
+  email        String?   @unique
+  phone        String?   @unique
+  status       String    @default("ACTIVE")
+  hospitalId   String?
+  hospital     Hospital? @relation("HospitalStaff", fields: [hospitalId], references: [id])
+  // Phase 2: fast KYC gate check (denormalised from kyc_verifications)
+  kycStatus    KycStatus @default(UNVERIFIED)
+  kycVerifiedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  patientProfile      Patient?
-  doctorProfile        Doctor?
-  notificationPrefs    NotificationPreference?
+  patientProfile        Patient?
+  doctorProfile         Doctor?
+  notificationPrefs     NotificationPreference?
+  fieldExecutiveProfile FieldExecutive?
+  kycVerification       KycVerification?
 
-  enquiriesRaised      Enquiry[]            @relation("PatientEnquiries")
-  auditLogs            AuditLog[]           @relation("AuditActor")
-  supportTicketsRaised SupportTicket[]      @relation("TicketRaisedBy")
-  supportTicketsOwned  SupportTicket[]      @relation("TicketAssignedTo")
+  enquiriesRaised       Enquiry[]              @relation("PatientEnquiries")
+  auditLogs             AuditLog[]             @relation("AuditActor")
+  supportTicketsRaised  SupportTicket[]        @relation("TicketRaisedBy")
+  supportTicketsOwned   SupportTicket[]        @relation("TicketAssignedTo")
   verificationDecisions VerificationDecision[] @relation("DecisionReviewer")
   enquiryStatusChanges  EnquiryStatusHistory[] @relation("StatusActor")
+  refundsInitiated      PaymentRefund[]        @relation("RefundInitiator")
+  kycReviewed           KycVerification[]      @relation("KycReviewer")
 
   @@index([hospitalId])
   @@index([role])
 }
 
-/// Patient-specific fields, 1:1 with User (PAT-02).
 model Patient {
   id        String   @id @default(cuid())
   userId    String   @unique
@@ -121,69 +205,71 @@ model Patient {
 }
 
 model NotificationPreference {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  smsEnabled   Boolean @default(true)
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smsEnabled      Boolean @default(true)
   whatsappEnabled Boolean @default(true)
-  emailEnabled Boolean @default(true)
+  emailEnabled    Boolean @default(true)
 }
 
-/// Doctor-specific fields, 1:1 with User (DOC module). hospitalId duplicated
-/// from User.hospitalId for query convenience and is kept in sync at write time.
 model Doctor {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hospitalId       String
-  hospital         Hospital @relation(fields: [hospitalId], references: [id])
-  specialisation   String
-  qualifications   String
-  experienceYears  Int      @default(0)
-  bio              String?
-  photoUrl         String?
-  createdAt        DateTime @default(now())
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId      String
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  specialisation  String
+  qualifications  String
+  experienceYears Int      @default(0)
+  bio             String?
+  photoUrl        String?
+  createdAt       DateTime @default(now())
 
   assignedEnquiries Enquiry[] @relation("AssignedDoctor")
 
   @@index([hospitalId])
 }
 
-/// A hospital listing (VER + HSP modules).
 model Hospital {
-  id                 String         @id @default(cuid())
-  name               String
-  slug               String         @unique
-  status             HospitalStatus @default(PENDING)
-  description        String?
-  specialities       String[]       @default([])
-  facilities         String[]       @default([])
-  accreditations     String[]       @default([])
-  photos             String[]       @default([])
-  city               String
-  address            String
-  latitude           Float?
-  longitude          Float?
-  contactPersonName  String
-  contactPersonPhone String
-  contactPersonEmail String
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  id                         String         @id @default(cuid())
+  name                       String
+  slug                       String         @unique
+  status                     HospitalStatus @default(PENDING)
+  description                String?
+  specialities               String[]       @default([])
+  facilities                 String[]       @default([])
+  accreditations             String[]       @default([])
+  photos                     String[]       @default([])
+  city                       String
+  address                    String
+  latitude                   Float?
+  longitude                  Float?
+  contactPersonName          String
+  contactPersonPhone         String
+  contactPersonEmail         String
+  // Phase 2: payment configuration
+  depositRequired            Boolean        @default(false)
+  depositAmountSurgery       Int            @default(0)
+  depositAmountSecondOpinion Int            @default(0)
+  slaCallbackHours           Int            @default(48)
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
 
-  staff              User[]                 @relation("HospitalStaff")
-  doctors            Doctor[]
-  treatmentPrices    HospitalTreatmentPrice[]
-  enquiries          Enquiry[]
-  reviews            Review[]
-  apiKeys            ApiKey[]
-  verificationDocs   VerificationDocument[]
+  staff                 User[]                   @relation("HospitalStaff")
+  doctors               Doctor[]
+  treatmentPrices       HospitalTreatmentPrice[]
+  enquiries             Enquiry[]
+  reviews               Review[]
+  apiKeys               ApiKey[]
+  verificationDocs      VerificationDocument[]
   verificationDecisions VerificationDecision[]
+  fieldExecutives       FieldExecutive[]
 
   @@index([city])
   @@index([status])
 }
 
-/// Global curated treatment catalogue (Section 8.2).
 model Treatment {
   id       String @id @default(cuid())
   name     String @unique
@@ -193,7 +279,6 @@ model Treatment {
   enquiries      Enquiry[]
 }
 
-/// HSP-04 indicative price list, per hospital per treatment.
 model HospitalTreatmentPrice {
   id              String    @id @default(cuid())
   hospitalId      String
@@ -208,60 +293,63 @@ model HospitalTreatmentPrice {
   @@index([treatmentId])
 }
 
-/// The pivotal entity — BKG module / Episodes A & B.
 model Enquiry {
-  id                       String        @id @default(cuid())
-  patientId                String
-  patient                  User          @relation("PatientEnquiries", fields: [patientId], references: [id])
-  hospitalId               String
-  hospital                 Hospital      @relation(fields: [hospitalId], references: [id])
-  intent                   EnquiryIntent
-  treatmentId              String?
-  treatment                Treatment?    @relation(fields: [treatmentId], references: [id])
-  condition                String
-  preferredCallbackWindow  String
-  status                   EnquiryStatus @default(NEW)
-  assignedDoctorId         String?
-  assignedDoctor           Doctor?       @relation("AssignedDoctor", fields: [assignedDoctorId], references: [id])
-  callbackOutcome          CallbackOutcome?
-  callbackNotes            String?
-  createdAt                DateTime      @default(now())
-  updatedAt                DateTime      @updatedAt
+  id                      String          @id @default(cuid())
+  patientId               String
+  patient                 User            @relation("PatientEnquiries", fields: [patientId], references: [id])
+  hospitalId              String
+  hospital                Hospital        @relation(fields: [hospitalId], references: [id])
+  intent                  EnquiryIntent
+  treatmentId             String?
+  treatment               Treatment?      @relation(fields: [treatmentId], references: [id])
+  condition               String
+  preferredCallbackWindow String
+  status                  EnquiryStatus   @default(NEW)
+  assignedDoctorId        String?
+  assignedDoctor          Doctor?         @relation("AssignedDoctor", fields: [assignedDoctorId], references: [id])
+  callbackOutcome         CallbackOutcome?
+  callbackNotes           String?
+  // Phase 2: payment + FE links
+  paymentRequired         Boolean         @default(false)
+  paymentId               String?         @unique
+  payment                 Payment?        @relation(fields: [paymentId], references: [id])
+  feQueueId               String?         @unique
+  feQueue                 FeBookingQueue? @relation("EnquiryFeQueue", fields: [feQueueId], references: [id])
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 
-  statusHistory   EnquiryStatusHistory[]
-  attachments     EnquiryRecordAttachment[]
-  consents        Consent[]
-  notifications   Notification[]
-  supportTickets  SupportTicket[]
+  statusHistory EnquiryStatusHistory[]
+  attachments   EnquiryRecordAttachment[]
+  consents      Consent[]
+  notifications Notification[]
+  supportTickets SupportTicket[]
 
   @@index([hospitalId, status])
   @@index([patientId])
   @@index([assignedDoctorId])
 }
 
-/// BKG-06 status lifecycle, timestamped + attributed for audit/response-time reporting.
 model EnquiryStatusHistory {
-  id         String        @id @default(cuid())
+  id         String         @id @default(cuid())
   enquiryId  String
-  enquiry    Enquiry       @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  enquiry    Enquiry        @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
   fromStatus EnquiryStatus?
   toStatus   EnquiryStatus
   actorId    String?
-  actor      User?         @relation("StatusActor", fields: [actorId], references: [id])
+  actor      User?          @relation("StatusActor", fields: [actorId], references: [id])
   note       String?
-  createdAt  DateTime      @default(now())
+  createdAt  DateTime       @default(now())
 
   @@index([enquiryId])
 }
 
-/// VLT module — the patient's private medical-records vault.
 model MedicalRecord {
   id         String         @id @default(cuid())
   patientId  String
   patient    Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
   title      String
   category   RecordCategory
-  fileKey    String // storage-provider object key, never a public URL
+  fileKey    String
   mimeType   String
   sizeBytes  Int
   recordedAt DateTime?
@@ -272,8 +360,6 @@ model MedicalRecord {
   @@index([patientId])
 }
 
-/// VLT-04/05 — a record is shared with a hospital only via an explicit,
-/// per-enquiry attachment; the record itself is never hospital-visible otherwise.
 model EnquiryRecordAttachment {
   id              String        @id @default(cuid())
   enquiryId       String
@@ -285,20 +371,18 @@ model EnquiryRecordAttachment {
   @@unique([enquiryId, medicalRecordId])
 }
 
-/// BKG-02 consent capture, kept as its own auditable event.
 model Consent {
-  id             String   @id @default(cuid())
-  patientId      String
-  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  enquiryId      String
-  enquiry        Enquiry  @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
-  recordsShared  Boolean  @default(false)
-  grantedAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  enquiryId     String
+  enquiry       Enquiry  @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  recordsShared Boolean  @default(false)
+  grantedAt     DateTime @default(now())
 
   @@index([enquiryId])
 }
 
-/// DIS-07 ratings & reviews.
 model Review {
   id         String   @id @default(cuid())
   hospitalId String
@@ -313,7 +397,6 @@ model Review {
   @@index([hospitalId])
 }
 
-/// NOT module — every notification attempt, for delivery logging (NOT-05).
 model Notification {
   id          String              @id @default(cuid())
   enquiryId   String?
@@ -331,7 +414,6 @@ model Notification {
   @@index([status])
 }
 
-/// NOT-06/07 hospital API auth.
 model ApiKey {
   id         String    @id @default(cuid())
   hospitalId String
@@ -345,7 +427,6 @@ model ApiKey {
   @@index([hospitalId])
 }
 
-/// VER-01/03 registration documents awaiting review.
 model VerificationDocument {
   id         String   @id @default(cuid())
   hospitalId String
@@ -357,21 +438,19 @@ model VerificationDocument {
   @@index([hospitalId])
 }
 
-/// VER-03/05 the reviewed decision + audit trail.
 model VerificationDecision {
-  id         String                    @id @default(cuid())
+  id         String                   @id @default(cuid())
   hospitalId String
-  hospital   Hospital                  @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  hospital   Hospital                 @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
   reviewerId String
-  reviewer   User                      @relation("DecisionReviewer", fields: [reviewerId], references: [id])
+  reviewer   User                     @relation("DecisionReviewer", fields: [reviewerId], references: [id])
   decision   VerificationDecisionType
   reason     String?
-  decidedAt  DateTime                  @default(now())
+  decidedAt  DateTime                 @default(now())
 
   @@index([hospitalId])
 }
 
-/// SUP module.
 model SupportTicket {
   id           String   @id @default(cuid())
   raisedById   String
@@ -381,7 +460,7 @@ model SupportTicket {
   enquiryId    String?
   enquiry      Enquiry? @relation(fields: [enquiryId], references: [id])
   subject      String
-  status       String   @default("OPEN") // OPEN | IN_PROGRESS | ESCALATED | RESOLVED
+  status       String   @default("OPEN")
   notes        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -389,7 +468,6 @@ model SupportTicket {
   @@index([status])
 }
 
-/// ADM-06 platform-wide immutable audit trail for every privileged/status-changing action.
 model AuditLog {
   id         String   @id @default(cuid())
   actorId    String?
@@ -403,4 +481,130 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([actorId])
+}
+
+// ─── Phase 2: Field Executive ─────────────────────────────────────────────────
+
+model FieldExecutive {
+  id          String          @id @default(cuid())
+  userId      String          @unique
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feType      FeType
+  hospitalId  String?
+  hospital    Hospital?       @relation(fields: [hospitalId], references: [id])
+  managerId   String?
+  manager     FieldExecutive? @relation("FeManager", fields: [managerId], references: [id])
+  reports     FieldExecutive[] @relation("FeManager")
+  status      FeAccountStatus @default(ACTIVE)
+  kycVerified Boolean         @default(false)
+  isDeleted   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  assignedBookings FeBookingQueue[] @relation("AssignedFe")
+  followUpLogs     FeFollowUpLog[]
+
+  @@index([hospitalId])
+  @@index([feType])
+}
+
+model FeBookingQueue {
+  id             String          @id @default(cuid())
+  feId           String?
+  fe             FieldExecutive? @relation("AssignedFe", fields: [feId], references: [id])
+  assignedAt     DateTime?
+  followUpStatus FollowUpStatus  @default(NOT_STARTED)
+  admissionRef   String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  enquiry      Enquiry?       @relation("EnquiryFeQueue")
+  followUpLogs FeFollowUpLog[]
+
+  @@index([feId])
+  @@index([followUpStatus])
+}
+
+model FeFollowUpLog {
+  id             String             @id @default(cuid())
+  feQueueId      String
+  feQueue        FeBookingQueue     @relation(fields: [feQueueId], references: [id])
+  feId           String
+  fe             FieldExecutive     @relation(fields: [feId], references: [id])
+  actionType     FollowUpActionType
+  notes          String
+  nextStep       String?
+  followUpDate   DateTime
+  createdAt      DateTime           @default(now())
+
+  @@index([feQueueId])
+}
+
+// ─── Phase 2: Payments ────────────────────────────────────────────────────────
+
+model Payment {
+  id                String        @id @default(cuid())
+  enquiry           Enquiry?
+  amount            Int
+  currency          String        @default("INR")
+  gateway           String        @default("razorpay")
+  gatewayOrderId    String        @unique
+  gatewayPaymentId  String?       @unique
+  status            PaymentStatus @default(PENDING)
+  webhookPayload    Json?
+  createdAt         DateTime      @default(now())
+  verifiedAt        DateTime?
+
+  refunds PaymentRefund[]
+
+  @@index([status])
+}
+
+model PaymentRefund {
+  id              String       @id @default(cuid())
+  paymentId       String
+  payment         Payment      @relation(fields: [paymentId], references: [id])
+  gatewayRefundId String?
+  amount          Int
+  reason          String
+  refundType      RefundType
+  status          RefundStatus @default(INITIATED)
+  initiatedById   String?
+  initiatedBy     User?        @relation("RefundInitiator", fields: [initiatedById], references: [id])
+  createdAt       DateTime     @default(now())
+
+  @@index([paymentId])
+}
+
+// ─── Phase 2: KYC & Documents ─────────────────────────────────────────────────
+
+model KycVerification {
+  id             String     @id @default(cuid())
+  userId         String     @unique
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kycType        KycType
+  status         KycStatus  @default(UNVERIFIED)
+  method         KycMethod?
+  digilockerRef  String?
+  verifiedAt     DateTime?
+  rejectedReason String?
+  reviewedById   String?
+  reviewedBy     User?      @relation("KycReviewer", fields: [reviewedById], references: [id])
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  documents KycDocument[]
+}
+
+model KycDocument {
+  id           String          @id @default(cuid())
+  kycId        String
+  kyc          KycVerification @relation(fields: [kycId], references: [id], onDelete: Cascade)
+  docType      KycDocType
+  fileRef      String
+  fileSizeKb   Int?
+  uploadedAt   DateTime        @default(now())
+  isDeleted    Boolean         @default(false)
+
+  @@index([kycId])
 }
