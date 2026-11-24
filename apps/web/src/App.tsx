@@ -8,6 +8,7 @@ import { HospitalProfile } from "@/pages/public/HospitalProfile";
 import { Login } from "@/pages/public/Login";
 import { Compare } from "@/pages/public/Compare";
 import { RegisterHospital } from "@/pages/public/RegisterHospital";
+import { GovtHospitals } from "@/pages/public/GovtHospitals";
 import { NotFound } from "@/pages/public/NotFound";
 
 import { PatientLayout } from "@/pages/patient/PatientLayout";
@@ -35,6 +36,7 @@ import { SupportTickets } from "@/pages/support/SupportTickets";
 import { AdminLayout } from "@/pages/admin/AdminLayout";
 import { AdminOverview } from "@/pages/admin/AdminOverview";
 import { AdminAuditLog } from "@/pages/admin/AdminAuditLog";
+import { AdminGovtHospitals } from "@/pages/admin/AdminGovtHospitals";
 
 import { FeLayout } from "@/pages/fe/FeLayout";
 import { FeDashboard } from "@/pages/fe/FeDashboard";
@@ -54,6 +56,7 @@ export default function App() {
           <Route path="/hospitals/:slug" element={<HospitalProfile />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/list-your-hospital" element={<RegisterHospital />} />
+          <Route path="/government-hospitals" element={<GovtHospitals />} />
           <Route path="/login" element={<Login />} />
         </Route>
 
@@ -88,6 +91,7 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminOverview />} />
           <Route path="audit-log" element={<AdminAuditLog />} />
+          <Route path="govt-hospitals" element={<AdminGovtHospitals />} />
           <Route path="kyc" element={<KycReviewQueue />} />
         </Route>
 

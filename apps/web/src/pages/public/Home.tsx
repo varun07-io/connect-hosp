@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search, Stethoscope, ArrowRight, Quote, ShieldCheck, Wallet, PhoneCall, TriangleAlert, HeartHandshake } from "lucide-react";
+import { Search, Stethoscope, ArrowRight, Quote, ShieldCheck, Wallet, PhoneCall, TriangleAlert, HeartHandshake, Landmark } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -213,6 +213,28 @@ export function Home() {
             </p>
           )}
         </div>
+      </section>
+
+      <section className="container pb-14">
+        <Link
+          to="/government-hospitals"
+          className="group flex flex-col gap-4 rounded-2xl border border-border bg-gradient-to-r from-primary-50 to-background p-6 transition-shadow hover:shadow-card sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white">
+              <Landmark className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="font-display text-lg font-semibold">Looking for a government hospital?</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Search the KASS empanelled government hospital list by area or speciality — eye, heart, cancer, maternity and more.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary-700">
+            Browse government hospitals <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </Link>
       </section>
 
       <section className="bg-muted/40 py-16">

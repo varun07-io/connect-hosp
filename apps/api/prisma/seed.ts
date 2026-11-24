@@ -1,4 +1,6 @@
 import { PrismaClient, type EnquiryStatus, type EnquiryIntent, type CallbackOutcome } from "@prisma/client";
+import { govtHospitalKey, normalizeGovtHospital } from "@connect-hospital/shared";
+import { KASS_BENGALURU } from "./data/kassGovtHospitals.js";
 
 const prisma = new PrismaClient();
 
@@ -651,6 +653,13 @@ async function main() {
         sentAt: i > 0 ? new Date(Date.now() - i * 60 * 60 * 1000) : null,
       },
     });
+  }
+
+  console.log("Seeding government hospital directory (KASS, Bengaluru)...");
+  for (const raw of KASS_BENGALURU) {
+    const row = normalizeGovtHospital({ ...raw, specialities: raw.speciality });
+    const key = govtHospitalKey(row);
+    await prisma.govtHospital.upsert({ where: { key }, update: {}, create: { key, ...row } });
   }
 
   console.log("Seeding support tickets...");

@@ -20,6 +20,7 @@ import fieldExecutiveRoutes from "./routes/fieldExecutive.js";
 import paymentsRoutes from "./routes/payments.js";
 import kycRoutes from "./routes/kyc.js";
 import hospitalManageRoutes from "./routes/hospitalManage.js";
+import govtHospitalRoutes from "./routes/govtHospitals.js";
 import { runSlaRefundJob } from "./lib/slaRefundJob.js";
 import { paymentsEnabled, stripPayments } from "./lib/features.js";
 
@@ -80,6 +81,7 @@ await app.register(fieldExecutiveRoutes);
 await app.register(paymentsRoutes);
 await app.register(kycRoutes);
 await app.register(hospitalManageRoutes);
+await app.register(govtHospitalRoutes);
 
 /** Public feature flags so the web app can adapt copy and navigation. */
 app.get("/api/config", async () => ({ paymentsEnabled: paymentsEnabled() }));

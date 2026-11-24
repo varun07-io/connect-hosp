@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogIn, LogOut, Menu, User, HeartHandshake, Building2 } from "lucide-react";
+import { LayoutDashboard, LogIn, LogOut, Menu, User, HeartHandshake, Building2, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_HOME, ROLE_LABEL } from "@/lib/roles";
@@ -12,6 +12,7 @@ import { initials } from "@/lib/utils";
 const NAV_LINKS = [
   { to: "/search", label: "Find a hospital", icon: Building2 },
   { to: "/search?intent=second-opinion", label: "Get a second opinion", icon: HeartHandshake },
+  { to: "/government-hospitals", label: "Govt hospitals", icon: Landmark },
   { to: "/list-your-hospital", label: "For hospitals", icon: User },
 ];
 

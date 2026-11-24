@@ -1,9 +1,10 @@
-import { LayoutGrid, ScrollText, ShieldCheck } from "lucide-react";
+import { Building2, LayoutGrid, ScrollText, ShieldCheck } from "lucide-react";
 import { RequireRole } from "@/components/auth/RequireRole";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 
 const NAV = [
   { label: "Overview", to: "/admin", icon: LayoutGrid, end: true },
+  { label: "Govt hospital list", to: "/admin/govt-hospitals", icon: Building2 },
   { label: "Audit log", to: "/admin/audit-log", icon: ScrollText },
   { label: "KYC review", to: "/admin/kyc", icon: ShieldCheck },
 ];

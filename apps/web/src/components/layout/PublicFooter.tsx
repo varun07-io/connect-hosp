@@ -18,6 +18,7 @@ export function PublicFooter() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/search" className="hover:text-foreground">Find a hospital</Link></li>
             <li><Link to="/compare" className="hover:text-foreground">Compare surgery costs</Link></li>
+            <li><Link to="/government-hospitals" className="hover:text-foreground">Government hospitals</Link></li>
             <li><Link to="/patient" className="hover:text-foreground">My enquiries</Link></li>
           </ul>
         </div>
