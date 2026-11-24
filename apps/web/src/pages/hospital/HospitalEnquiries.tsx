@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useHospitalEnquiries, useHospitalMe } from "@/hooks/useApiQueries";
+import { useAppConfig, useHospitalEnquiries, useHospitalMe } from "@/hooks/useApiQueries";
 import { useAcknowledgeEnquiry, useAssignEnquiry, useHospitalDoctors } from "@/hooks/useApiMutations";
 import { useHospitalEnquiry } from "@/hooks/useHospitalAdmin";
 import { slaState, type SlaTone } from "@/lib/sla";
@@ -58,6 +58,7 @@ export function HospitalEnquiries() {
   const { data, isLoading } = useHospitalEnquiries();
   const { data: hospital } = useHospitalMe();
   const slaHours = hospital?.slaCallbackHours ?? 48;
+  const { paymentsEnabled } = useAppConfig();
   const now = useNow();
   const [tab, setTab] = React.useState<Tab>("action");
   const [query, setQuery] = React.useState("");
@@ -98,7 +99,7 @@ export function HospitalEnquiries() {
           <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
           <p>
             <span className="font-semibold">{overdue} {overdue === 1 ? "patient is" : "patients are"} past the {slaHours}-hour callback deadline.</span>{" "}
-            Call them first — paid deposits become eligible for an automatic refund.
+            Call them first{paymentsEnabled ? " — paid deposits become eligible for an automatic refund" : ""}.
           </p>
         </div>
       )}

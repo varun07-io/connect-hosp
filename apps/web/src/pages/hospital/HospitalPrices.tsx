@@ -96,10 +96,10 @@ function AddPrice({ data }: { data: HospitalPricesResponse }) {
         </div>
         <div className="space-y-1.5 md:w-48">
           <p className="text-xs font-medium text-muted-foreground">Indicative price (₹)</p>
-          <Input type="number" min={1000} step={500} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 185000" />
+          <Input type="number" min={1} step={500} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 185000" />
         </div>
         <Button
-          disabled={!treatmentId || Number(price) < 1000 || save.isPending}
+          disabled={!treatmentId || !(Number(price) > 0) || save.isPending}
           onClick={() =>
             save.mutate(
               { treatmentId, indicativePrice: Number(price) },
@@ -143,7 +143,7 @@ function PriceRow({
   const [draft, setDraft] = React.useState(String(Math.round(price)));
   React.useEffect(() => setDraft(String(Math.round(price))), [price]);
   const dirty = Number(draft) !== Math.round(price);
-  const valid = Number(draft) >= 1000;
+  const valid = Number(draft) > 0;
 
   const current = dirty && valid ? Number(draft) : price;
   const vsAvg = market ? Math.round(((current - market.avg) / market.avg) * 100) : null;
@@ -160,7 +160,7 @@ function PriceRow({
         <span className="text-sm text-muted-foreground">₹</span>
         <Input
           type="number"
-          min={1000}
+          min={1}
           step={500}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

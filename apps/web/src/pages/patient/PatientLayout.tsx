@@ -1,6 +1,7 @@
 import { ClipboardList, CreditCard, FolderLock, ShieldCheck } from "lucide-react";
 import { RequireRole } from "@/components/auth/RequireRole";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import { useAppConfig } from "@/hooks/useApiQueries";
 
 const NAV = [
   { label: "My requests", to: "/patient", icon: ClipboardList, end: true },
@@ -10,9 +11,11 @@ const NAV = [
 ];
 
 export function PatientLayout() {
+  const { paymentsEnabled } = useAppConfig();
+  const nav = paymentsEnabled ? NAV : NAV.filter((n) => n.to !== "/patient/payments");
   return (
     <RequireRole roles={["PATIENT"]}>
-      <DashboardShell roleLabel="Patient dashboard" navItems={NAV} />
+      <DashboardShell roleLabel="Patient dashboard" navItems={nav} />
     </RequireRole>
   );
 }

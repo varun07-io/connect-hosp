@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createEnquirySchema, type EnquiryStatus } from "@connect-hospital/shared";
 import { notifyEnquiry, transitionEnquiry } from "../lib/enquiryEvents.js";
 import { recordAudit } from "../lib/audit.js";
+import { paymentsEnabled } from "../lib/features.js";
 import { getStorageProvider } from "../lib/storage/index.js";
 
 /** Before the doctor has guided the patient, the patient may withdraw. */
@@ -44,7 +45,7 @@ export default async function patientRoutes(app: FastifyInstance) {
           patientId: request.authUser!.id,
           hospitalId,
           intent,
-          paymentRequired: hospital.depositRequired && depositAmount > 0,
+          paymentRequired: paymentsEnabled() && hospital.depositRequired && depositAmount > 0,
           treatmentId,
           condition,
           preferredCallbackWindow,

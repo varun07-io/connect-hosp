@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CityAutocomplete } from "@/components/shared/CityAutocomplete";
 import { HospitalCard } from "@/components/shared/HospitalCard";
-import { useHospitalSearch } from "@/hooks/useApiQueries";
+import { useAppConfig, useHospitalSearch } from "@/hooks/useApiQueries";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SURGERY_CATEGORIES } from "@/lib/surgeryCategories";
 import { initials } from "@/lib/utils";
@@ -18,7 +18,7 @@ const PILOT_CITIES = ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi"];
 const STEPS = [
   { step: "1", title: "Search & compare", desc: "Filter by location, treatment and budget to shortlist hospitals." },
   { step: "2", title: "Request a callback", desc: "Share your condition and pick a time. Attach reports from your secure vault if you like." },
-  { step: "3", title: "Talk to the doctor", desc: "A hospital doctor calls at your chosen time — or your refundable deposit comes back to you." },
+  { step: "3", title: "Talk to the doctor", desc: "A hospital doctor calls you at your chosen time to guide your next steps." },
 ];
 
 const TESTIMONIALS = [
@@ -47,6 +47,7 @@ export function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data, isLoading } = useHospitalSearch({ page: 1 });
+  const { paymentsEnabled } = useAppConfig();
 
   useEffect(() => {
     if (!localStorage.getItem(DISCLAIMER_KEY)) {
@@ -166,7 +167,7 @@ export function Home() {
             {[
               { icon: ShieldCheck, text: "Verified hospitals only" },
               { icon: Wallet, text: "Free to search & compare" },
-              { icon: PhoneCall, text: "Callback guarantee" },
+              { icon: PhoneCall, text: paymentsEnabled ? "Callback guarantee" : "Free doctor callback" },
             ].map((t) => (
               <span key={t.text} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <t.icon className="h-3.5 w-3.5 text-primary-600" />
@@ -185,8 +186,8 @@ export function Home() {
               <p className="text-xs text-muted-foreground">Transparent pricing</p>
             </div>
             <div>
-              <p className="font-display text-2xl font-bold text-primary-700">Guaranteed</p>
-              <p className="text-xs text-muted-foreground">Doctor callback, or your deposit back</p>
+              <p className="font-display text-2xl font-bold text-primary-700">{paymentsEnabled ? "Guaranteed" : "Free"}</p>
+              <p className="text-xs text-muted-foreground">{paymentsEnabled ? "Doctor callback, or your deposit back" : "Doctor callback, no booking fee"}</p>
             </div>
           </div>
         </div>

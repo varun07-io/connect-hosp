@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHospitalSettings, useUpdateHospitalSettings } from "@/hooks/useHospitalAdmin";
+import { useAppConfig } from "@/hooks/useApiQueries";
 import { FACILITY_SUGGESTIONS, SPECIALITY_SUGGESTIONS } from "@/lib/hospitalVocab";
 import type { HospitalSettings as Settings } from "@/types/api";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -51,6 +52,7 @@ function pickEditable(s: Settings): Editable {
 export function HospitalSettings() {
   const { data, isLoading } = useHospitalSettings();
   const save = useUpdateHospitalSettings();
+  const { paymentsEnabled } = useAppConfig();
   const [form, setForm] = React.useState<Editable | null>(null);
 
   React.useEffect(() => {
@@ -133,7 +135,14 @@ export function HospitalSettings() {
         </div>
       </Section>
 
-      <Section title="Booking & deposits" desc="Set how quickly you commit to call patients back, and whether you take a refundable deposit.">
+      <Section
+        title={paymentsEnabled ? "Booking & deposits" : "Callback commitment"}
+        desc={
+          paymentsEnabled
+            ? "Set how quickly you commit to call patients back, and whether you take a refundable deposit."
+            : "Set how quickly you commit to call patients back after they send a request."
+        }
+      >
         <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
           <div className="space-y-5">
             <div className="space-y-2">
@@ -155,10 +164,12 @@ export function HospitalSettings() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                Your inbox counts down to this deadline. If you take deposits, patients not called in time are refunded automatically.
+                Your inbox counts down to this deadline
+                {paymentsEnabled ? ". If you take deposits, patients not called in time are refunded automatically." : "."}
               </p>
             </div>
 
+            {paymentsEnabled && (
             <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-border p-4">
               <span>
                 <span className="block text-sm font-semibold">Take a refundable booking deposit</span>
@@ -184,8 +195,9 @@ export function HospitalSettings() {
                 />
               </button>
             </label>
+            )}
 
-            {form.depositRequired && (
+            {paymentsEnabled && form.depositRequired && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="s-dep-s">Surgery deposit (₹)</Label>

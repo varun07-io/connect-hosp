@@ -6,6 +6,7 @@ import { env } from "../env.js";
 import { recordAudit } from "../lib/audit.js";
 import { onBookingPaid } from "../lib/feAssignmentEngine.js";
 import { notifyEnquiry } from "../lib/enquiryEvents.js";
+import { paymentsEnabled } from "../lib/features.js";
 
 function getRazorpay(): Razorpay {
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
@@ -26,6 +27,13 @@ const refundSchema = z.object({
 
 /** Payment module — Razorpay order creation, webhook verification, and refund management. */
 export default async function paymentsRoutes(app: FastifyInstance) {
+  // Prototype mode: every payment endpoint in this (encapsulated) plugin is off.
+  if (!paymentsEnabled()) {
+    app.addHook("onRequest", async (_request, reply) => {
+      return reply.code(404).send({ error: "Payments are switched off in this prototype." });
+    });
+  }
+
   /** Create a Razorpay order for an enquiry deposit. */
   app.post(
     "/api/payments/orders",

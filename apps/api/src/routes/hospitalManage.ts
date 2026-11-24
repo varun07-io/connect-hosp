@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { recordAudit } from "../lib/audit.js";
 import { getNotificationProvider } from "../lib/notifications/index.js";
+import { paymentsEnabled } from "../lib/features.js";
 
 const phone = z.string().trim().regex(/^\+?[0-9]{10,15}$/, "Enter a valid phone number");
 const tags = z.array(z.string().trim().min(1).max(60)).max(30);
@@ -43,7 +44,7 @@ const profileSchema = z
   );
 
 const priceSchema = z.object({
-  indicativePrice: z.number().min(1_000).max(100_000_000),
+  indicativePrice: z.number().positive(),
   notes: z.string().trim().max(300).optional(),
 });
 
@@ -148,7 +149,12 @@ export default async function hospitalManageRoutes(app: FastifyInstance) {
   app.patch("/api/hospital/profile", { preHandler: app.requireRole("HOSPITAL_ADMIN") }, async (request, reply) => {
     const hospitalId = scopedHospitalId(request, reply);
     if (!hospitalId) return;
-    const parsed = profileSchema.safeParse(request.body);
+    // Prototype mode: deposit settings are ignored entirely (no amount checks).
+    const body = { ...((request.body as Record<string, unknown>) ?? {}) };
+    if (!paymentsEnabled()) {
+      for (const k of ["depositRequired", "depositAmountSurgery", "depositAmountSecondOpinion"]) delete body[k];
+    }
+    const parsed = profileSchema.safeParse(body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const before = await app.prisma.hospital.findUnique({ where: { id: hospitalId } });

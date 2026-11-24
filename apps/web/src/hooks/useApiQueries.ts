@@ -37,6 +37,17 @@ function toQueryString(params: Record<string, string | number | undefined>) {
   return qs ? `?${qs}` : "";
 }
 
+/** Public feature flags from the API (GET /api/config). Payments default to
+ *  off while loading, matching the prototype's server default. */
+export function useAppConfig() {
+  const { data } = useQuery({
+    queryKey: ["config"],
+    queryFn: () => apiFetch<{ paymentsEnabled: boolean }>("/api/config"),
+    staleTime: Infinity,
+  });
+  return { paymentsEnabled: data?.paymentsEnabled ?? false };
+}
+
 export function useHospitalSearch(params: HospitalSearchParams) {
   return useQuery({
     queryKey: ["hospitals", params],

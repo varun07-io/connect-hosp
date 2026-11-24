@@ -128,7 +128,7 @@ export function PatientKyc() {
     <div className="space-y-4">
       <PageHeader
         title="Verify your identity"
-        description="A one-time ID check that unlocks paid bookings and secure sharing of your medical reports with doctors."
+        description="A one-time ID check that unlocks secure sharing of your medical reports with doctors."
       />
 
       {returnTo && (

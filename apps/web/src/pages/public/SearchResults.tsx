@@ -25,7 +25,7 @@ const SORT_LABELS: Record<string, string> = {
 const TRUST_POINTS = [
   { icon: ShieldCheck, text: "Every hospital verified before listing" },
   { icon: Wallet, text: "Transparent, indicative pricing" },
-  { icon: PhoneCall, text: "Guaranteed callback from a hospital doctor" },
+  { icon: PhoneCall, text: "Callback from a hospital doctor" },
 ];
 
 export function SearchResults() {
