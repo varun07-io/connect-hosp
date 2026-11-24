@@ -27,6 +27,8 @@ import { useHospitalProfile } from "@/hooks/useApiQueries";
 import { formatCurrency, formatDate, initials } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { loginPathFor } from "@/lib/redirect";
+import { CompareToggle } from "@/components/shared/CompareTray";
+import { useCompare } from "@/context/CompareContext";
 
 // Leaflet is a heavy, map-only dependency — keep it out of the main bundle.
 const HospitalMap = lazy(() => import("@/components/shared/HospitalMap").then((m) => ({ default: m.HospitalMap })));
@@ -48,6 +50,7 @@ export function HospitalProfile() {
   const [bookingTreatment, setBookingTreatment] = useState<string | undefined>();
   const [roleNotice, setRoleNotice] = useState<string | null>(null);
   const [tab, setTab] = useState("overview");
+  const compare = useCompare();
 
   // Visitors arriving from "Get a second opinion" see that as the primary action.
   const preferredIntent: EnquiryIntent = parseIntent(searchParams.get("intent")) ?? "SURGERY";
@@ -129,9 +132,19 @@ export function HospitalProfile() {
       {/* Hero */}
       <div className="border-b border-border bg-gradient-to-b from-primary-50/70 to-background">
         <div className="container py-6 md:py-8">
-          <Link to="/search" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to results
-          </Link>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <Link to="/search" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" /> Back to results
+            </Link>
+            <div className="flex items-center gap-2">
+              {compare.has(hospital.slug) && compare.items.length >= 2 && (
+                <Button asChild size="sm" variant="link" className="lg:hidden">
+                  <Link to={compare.compareUrl}>Compare {compare.items.length}</Link>
+                </Button>
+              )}
+              <CompareToggle item={{ slug: hospital.slug, name: hospital.name, city: hospital.city, photo: hospital.photos[0] }} />
+            </div>
+          </div>
           <div className="flex flex-col gap-5 md:flex-row md:items-center">
             <div className="h-28 w-full shrink-0 overflow-hidden rounded-2xl border border-border bg-muted md:h-32 md:w-48">
               {hospital.photos[0] && <img src={hospital.photos[0]} alt="" className="h-full w-full object-cover" />}

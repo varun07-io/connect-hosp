@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { PublicHeader } from "./PublicHeader";
 import { PublicFooter } from "./PublicFooter";
+import { CompareTray } from "@/components/shared/CompareTray";
 
 export function PublicLayout() {
   return (
@@ -10,6 +11,7 @@ export function PublicLayout() {
         <Outlet />
       </main>
       <PublicFooter />
+      <CompareTray />
     </div>
   );
 }

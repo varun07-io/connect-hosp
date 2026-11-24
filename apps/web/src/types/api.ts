@@ -9,10 +9,14 @@ export interface HospitalSummary {
   photos: string[];
   accreditations: string[];
   startingPrice: number | null;
+  startingTreatment?: string | null;
   currency: string;
   avgRating: number | null;
   reviewCount: number;
   doctorCount: number;
+  depositRequired?: boolean;
+  slaCallbackHours?: number;
+  treatmentCount?: number;
 }
 
 export interface FacetBucket {

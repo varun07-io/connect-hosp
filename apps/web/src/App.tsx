@@ -6,6 +6,7 @@ import { Home } from "@/pages/public/Home";
 import { SearchResults } from "@/pages/public/SearchResults";
 import { HospitalProfile } from "@/pages/public/HospitalProfile";
 import { Login } from "@/pages/public/Login";
+import { Compare } from "@/pages/public/Compare";
 import { NotFound } from "@/pages/public/NotFound";
 
 import { PatientLayout } from "@/pages/patient/PatientLayout";
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/hospitals/:slug" element={<HospitalProfile />} />
+          <Route path="/compare" element={<Compare />} />
           <Route path="/login" element={<Login />} />
         </Route>
 

@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { MapPin, Star, ShieldCheck, Stethoscope, PhoneCall, ArrowRight, HeartHandshake } from "lucide-react";
+import { MapPin, Star, ShieldCheck, Stethoscope, PhoneCall, HeartHandshake, BadgeCheck, Timer } from "lucide-react";
 import type { EnquiryIntent } from "@connect-hospital/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { HospitalSummary } from "@/types/api";
 import { formatCurrency } from "@/lib/utils";
+import { CompareToggle } from "@/components/shared/CompareTray";
 
 /** The primary conversion unit of the whole product: every element here exists
  *  to answer "can I trust it, what will it cost, what happens if I click". */
@@ -60,18 +61,32 @@ export function HospitalCard({ hospital, intent = "SURGERY" }: { hospital: Hospi
 
           <div className="mt-auto pt-3">
             {hospital.startingPrice !== null ? (
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">from</span>
-                <span className="font-display text-lg font-bold text-primary-700">
-                  {formatCurrency(hospital.startingPrice, hospital.currency)}
-                </span>
-              </div>
+              <>
+                {hospital.startingTreatment && (
+                  <p className="truncate text-[11px] text-muted-foreground">{hospital.startingTreatment}</p>
+                )}
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">from</span>
+                  <span className="font-display text-lg font-bold text-primary-700">
+                    {formatCurrency(hospital.startingPrice, hospital.currency)}
+                  </span>
+                </div>
+              </>
             ) : (
               <span className="text-xs text-muted-foreground">Pricing on request</span>
             )}
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {hospital.reviewCount > 0 ? `${hospital.reviewCount} patient reviews` : "Newly listed"}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+              {hospital.depositRequired ? (
+                <span className="flex items-center gap-1 font-medium text-primary-700">
+                  <Timer className="h-3 w-3" /> Call in {hospital.slaCallbackHours ?? 48}h, guaranteed
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 font-medium text-green-700">
+                  <BadgeCheck className="h-3 w-3" /> Free callback
+                </span>
+              )}
+              <span>{hospital.reviewCount > 0 ? `${hospital.reviewCount} reviews` : "Newly listed"}</span>
+            </div>
           </div>
         </div>
       </Link>
@@ -80,14 +95,12 @@ export function HospitalCard({ hospital, intent = "SURGERY" }: { hospital: Hospi
         <Button asChild size="sm" className="flex-1">
           <Link to={to}>
             {secondOpinion ? <HeartHandshake className="h-3.5 w-3.5" /> : <PhoneCall className="h-3.5 w-3.5" />}
-            {secondOpinion ? "Get second opinion" : "Get free callback"}
+            {secondOpinion ? "Get second opinion" : hospital.depositRequired ? "Request callback" : "Get free callback"}
           </Link>
         </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to={to} aria-label={`View ${hospital.name} details`}>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
+        <CompareToggle
+          item={{ slug: hospital.slug, name: hospital.name, city: hospital.city, photo: hospital.photos[0] }}
+        />
       </div>
     </Card>
   );

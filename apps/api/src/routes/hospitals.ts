@@ -5,6 +5,7 @@ interface PricePoint {
   price: number;
   currency: string;
   treatmentId: string;
+  treatmentName: string;
   category: string;
 }
 
@@ -19,6 +20,8 @@ interface HospitalRow {
   doctorCount: number;
   reviewCount: number;
   avgRating: number | null;
+  depositRequired: boolean;
+  slaCallbackHours: number;
   prices: PricePoint[];
 }
 
@@ -87,10 +90,17 @@ export default async function hospitalRoutes(app: FastifyInstance) {
         specialities: true,
         photos: true,
         accreditations: true,
+        depositRequired: true,
+        slaCallbackHours: true,
         _count: { select: { doctors: true } },
         reviews: { select: { rating: true } },
         treatmentPrices: {
-          select: { indicativePrice: true, currency: true, treatmentId: true, treatment: { select: { category: true } } },
+          select: {
+            indicativePrice: true,
+            currency: true,
+            treatmentId: true,
+            treatment: { select: { name: true, category: true } },
+          },
         },
       },
     });
@@ -106,10 +116,13 @@ export default async function hospitalRoutes(app: FastifyInstance) {
       doctorCount: h._count.doctors,
       reviewCount: h.reviews.length,
       avgRating: h.reviews.length > 0 ? h.reviews.reduce((s, r) => s + r.rating, 0) / h.reviews.length : null,
+      depositRequired: h.depositRequired,
+      slaCallbackHours: h.slaCallbackHours,
       prices: h.treatmentPrices.map((p) => ({
         price: Number(p.indicativePrice),
         currency: p.currency,
         treatmentId: p.treatmentId,
+        treatmentName: p.treatment.name,
         category: p.treatment.category,
       })),
     }));
@@ -130,7 +143,12 @@ export default async function hospitalRoutes(app: FastifyInstance) {
         reviewCount: h.reviewCount,
         avgRating: h.avgRating,
         startingPrice: sp ? sp.price : null,
+        // Which procedure the "from ₹X" refers to, so the card can say so.
+        startingTreatment: sp?.treatmentName ?? null,
         currency: sp?.currency ?? "INR",
+        depositRequired: h.depositRequired,
+        slaCallbackHours: h.slaCallbackHours,
+        treatmentCount: h.prices.length,
       };
     });
 
