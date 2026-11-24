@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { MapPin, Star, ShieldCheck, Stethoscope, PhoneCall, ArrowRight } from "lucide-react";
+import { MapPin, Star, ShieldCheck, Stethoscope, PhoneCall, ArrowRight, HeartHandshake } from "lucide-react";
+import type { EnquiryIntent } from "@connect-hospital/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,8 +9,9 @@ import { formatCurrency } from "@/lib/utils";
 
 /** The primary conversion unit of the whole product: every element here exists
  *  to answer "can I trust it, what will it cost, what happens if I click". */
-export function HospitalCard({ hospital }: { hospital: HospitalSummary }) {
-  const to = `/hospitals/${hospital.slug}`;
+export function HospitalCard({ hospital, intent = "SURGERY" }: { hospital: HospitalSummary; intent?: EnquiryIntent }) {
+  const secondOpinion = intent === "SECOND_OPINION";
+  const to = `/hospitals/${hospital.slug}${secondOpinion ? "?intent=second-opinion" : ""}`;
   const isVerified = hospital.accreditations.length > 0;
 
   return (
@@ -77,7 +79,8 @@ export function HospitalCard({ hospital }: { hospital: HospitalSummary }) {
       <div className="flex items-center gap-2 border-t border-border p-3">
         <Button asChild size="sm" className="flex-1">
           <Link to={to}>
-            <PhoneCall className="h-3.5 w-3.5" /> Get free callback
+            {secondOpinion ? <HeartHandshake className="h-3.5 w-3.5" /> : <PhoneCall className="h-3.5 w-3.5" />}
+            {secondOpinion ? "Get second opinion" : "Get free callback"}
           </Link>
         </Button>
         <Button asChild size="sm" variant="outline">

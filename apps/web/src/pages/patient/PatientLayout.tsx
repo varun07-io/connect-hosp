@@ -3,10 +3,10 @@ import { RequireRole } from "@/components/auth/RequireRole";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 
 const NAV = [
-  { label: "My enquiries", to: "/patient", icon: ClipboardList, end: true },
-  { label: "Medical records vault", to: "/patient/vault", icon: FolderLock },
-  { label: "KYC verification", to: "/patient/kyc", icon: ShieldCheck },
-  { label: "Payment history", to: "/patient/payments", icon: CreditCard },
+  { label: "My requests", to: "/patient", icon: ClipboardList, end: true },
+  { label: "Records vault", to: "/patient/vault", icon: FolderLock },
+  { label: "ID verification", to: "/patient/kyc", icon: ShieldCheck },
+  { label: "Payments", to: "/patient/payments", icon: CreditCard },
 ];
 
 export function PatientLayout() {

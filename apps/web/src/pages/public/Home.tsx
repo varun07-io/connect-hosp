@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search, Stethoscope, ArrowRight, Quote, ShieldCheck, Wallet, PhoneCall, TriangleAlert } from "lucide-react";
+import { Search, Stethoscope, ArrowRight, Quote, ShieldCheck, Wallet, PhoneCall, TriangleAlert, HeartHandshake } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +17,8 @@ const PILOT_CITIES = ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi"];
 
 const STEPS = [
   { step: "1", title: "Search & compare", desc: "Filter by location, treatment and budget to shortlist hospitals." },
-  { step: "2", title: "Book a visit or opinion", desc: "Share your condition and, if you like, attach medical records." },
-  { step: "3", title: "Get a guided callback", desc: "A hospital doctor calls you within minutes to guide next steps." },
+  { step: "2", title: "Request a callback", desc: "Share your condition and pick a time. Attach reports from your secure vault if you like." },
+  { step: "3", title: "Talk to the doctor", desc: "A hospital doctor calls at your chosen time — or your refundable deposit comes back to you." },
 ];
 
 const TESTIMONIALS = [
@@ -151,14 +152,21 @@ export function Home() {
             </div>
           </div>
 
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm text-muted-foreground">
+            Already been advised surgery?{" "}
+            <Link to="/search?intent=second-opinion" className="inline-flex items-center gap-1 font-medium text-primary-700 hover:underline">
+              <HeartHandshake className="h-3.5 w-3.5" /> Get a second opinion first
+            </Link>
+          </p>
+
           {/* Secondary trust signals — kept below the location+procedure panel
               on mobile so that panel stays inside the first viewport; they're
               a short scroll away rather than competing for the same fold. */}
           <div className="mx-auto mt-4 hidden max-w-xl flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:flex">
             {[
               { icon: ShieldCheck, text: "Verified hospitals only" },
-              { icon: Wallet, text: "No booking fee" },
-              { icon: PhoneCall, text: "Free doctor callback" },
+              { icon: Wallet, text: "Free to search & compare" },
+              { icon: PhoneCall, text: "Callback guarantee" },
             ].map((t) => (
               <span key={t.text} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <t.icon className="h-3.5 w-3.5 text-primary-600" />
@@ -177,8 +185,8 @@ export function Home() {
               <p className="text-xs text-muted-foreground">Transparent pricing</p>
             </div>
             <div>
-              <p className="font-display text-2xl font-bold text-primary-700">Minutes</p>
-              <p className="text-xs text-muted-foreground">To a guided callback</p>
+              <p className="font-display text-2xl font-bold text-primary-700">Guaranteed</p>
+              <p className="text-xs text-muted-foreground">Doctor callback, or your deposit back</p>
             </div>
           </div>
         </div>

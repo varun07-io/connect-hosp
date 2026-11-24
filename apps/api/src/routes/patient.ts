@@ -1,8 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import type { MultipartFile } from "@fastify/multipart";
-import { createEnquirySchema } from "@connect-hospital/shared";
-import { notifyEnquiry } from "../lib/enquiryEvents.js";
+import { z } from "zod";
+import { createEnquirySchema, type EnquiryStatus } from "@connect-hospital/shared";
+import { notifyEnquiry, transitionEnquiry } from "../lib/enquiryEvents.js";
+import { recordAudit } from "../lib/audit.js";
 import { getStorageProvider } from "../lib/storage/index.js";
+
+/** Before the doctor has guided the patient, the patient may withdraw. */
+const PATIENT_CANCELLABLE: EnquiryStatus[] = ["NEW", "ACKNOWLEDGED", "ASSIGNED", "CONTACTED", "NO_RESPONSE", "REOPENED"];
+
+const cancelEnquirySchema = z.object({ reason: z.string().trim().max(500).optional() });
 
 /** PAT + BKG modules — discovery-to-callback core loop (Episode A/B). */
 export default async function patientRoutes(app: FastifyInstance) {
@@ -28,11 +35,16 @@ export default async function patientRoutes(app: FastifyInstance) {
       const patient = await app.prisma.patient.findUnique({ where: { userId: request.authUser!.id } });
       if (!patient) return reply.code(409).send({ error: "Complete your patient profile before booking" });
 
+      // Snapshot the deposit requirement at booking time, so later changes to
+      // the hospital's settings never retroactively demand payment.
+      const depositAmount = intent === "SURGERY" ? hospital.depositAmountSurgery : hospital.depositAmountSecondOpinion;
+
       const enquiry = await app.prisma.enquiry.create({
         data: {
           patientId: request.authUser!.id,
           hospitalId,
           intent,
+          paymentRequired: hospital.depositRequired && depositAmount > 0,
           treatmentId,
           condition,
           preferredCallbackWindow,
@@ -76,11 +88,124 @@ export default async function patientRoutes(app: FastifyInstance) {
         where: { patientId },
         orderBy: { createdAt: "desc" },
         include: {
-          hospital: { select: { name: true, slug: true } },
+          hospital: { select: { name: true, slug: true, city: true, depositRequired: true } },
           treatment: { select: { name: true } },
           assignedDoctor: { select: { user: { select: { name: true } } } },
+          payment: { select: { status: true, amount: true } },
         },
       });
+    },
+  );
+
+  /** Full enquiry view for the patient: progress timeline, doctor, callback
+   *  notes, shared records and deposit state — everything "what happens next" needs. */
+  app.get(
+    "/api/patient/enquiries/:id",
+    { preHandler: app.requireRole("PATIENT") },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const enquiry = await app.prisma.enquiry.findFirst({
+        where: { id, patientId: request.authUser!.id },
+        include: {
+          hospital: {
+            select: {
+              name: true,
+              slug: true,
+              city: true,
+              address: true,
+              depositRequired: true,
+              depositAmountSurgery: true,
+              depositAmountSecondOpinion: true,
+              slaCallbackHours: true,
+            },
+          },
+          treatment: { select: { name: true, category: true } },
+          assignedDoctor: {
+            select: { specialisation: true, qualifications: true, experienceYears: true, user: { select: { name: true } } },
+          },
+          statusHistory: { orderBy: { createdAt: "asc" }, select: { id: true, fromStatus: true, toStatus: true, note: true, createdAt: true } },
+          attachments: { select: { medicalRecord: { select: { id: true, title: true, category: true } } } },
+          payment: {
+            select: {
+              id: true,
+              amount: true,
+              currency: true,
+              status: true,
+              verifiedAt: true,
+              refunds: { select: { id: true, amount: true, status: true, reason: true, createdAt: true } },
+            },
+          },
+        },
+      });
+      if (!enquiry) return reply.code(404).send({ error: "Enquiry not found" });
+      return enquiry;
+    },
+  );
+
+  /** Patient-initiated cancellation. Any verified deposit is queued for a full
+   *  refund (PATIENT_CANCEL) the same way the SLA job queues one — ops/the
+   *  gateway settle it from there. */
+  app.patch(
+    "/api/patient/enquiries/:id/cancel",
+    { preHandler: app.requireRole("PATIENT") },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = cancelEnquirySchema.safeParse(request.body ?? {});
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+
+      const enquiry = await app.prisma.enquiry.findFirst({
+        where: { id, patientId: request.authUser!.id },
+        include: { hospital: true, payment: true },
+      });
+      if (!enquiry) return reply.code(404).send({ error: "Enquiry not found" });
+      if (!PATIENT_CANCELLABLE.includes(enquiry.status)) {
+        return reply.code(409).send({ error: `An enquiry that is ${enquiry.status.toLowerCase().replace("_", " ")} can't be cancelled.` });
+      }
+
+      const reason = parsed.data.reason?.trim() || "Cancelled by patient.";
+      await transitionEnquiry(app.prisma, {
+        enquiryId: id,
+        fromStatus: enquiry.status,
+        toStatus: "CANCELLED",
+        actorId: request.authUser!.id,
+        note: reason,
+      });
+
+      let refundQueued = false;
+      if (enquiry.payment?.status === "VERIFIED") {
+        await app.prisma.$transaction([
+          app.prisma.payment.update({ where: { id: enquiry.payment.id }, data: { status: "REFUND_INITIATED" } }),
+          app.prisma.paymentRefund.create({
+            data: {
+              paymentId: enquiry.payment.id,
+              amount: enquiry.payment.amount,
+              reason: `Patient cancelled: ${reason}`,
+              refundType: "PATIENT_CANCEL",
+              status: "INITIATED",
+              initiatedById: request.authUser!.id,
+            },
+          }),
+        ]);
+        refundQueued = true;
+      }
+
+      await notifyEnquiry(app.prisma, {
+        enquiryId: id,
+        recipient: enquiry.hospital.contactPersonEmail,
+        channel: "EMAIL",
+        template: "enquiry_cancelled",
+        data: { hospitalName: enquiry.hospital.name, patientName: request.authUser!.name },
+      });
+      await recordAudit(app.prisma, {
+        actorId: request.authUser!.id,
+        action: "ENQUIRY_CANCELLED",
+        entityType: "Enquiry",
+        entityId: id,
+        before: { status: enquiry.status },
+        after: { status: "CANCELLED", refundQueued },
+      });
+
+      return { ok: true, status: "CANCELLED", refundQueued };
     },
   );
 

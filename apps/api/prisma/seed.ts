@@ -79,6 +79,13 @@ const CONDITIONS = [
   "Follow-up required after diagnostic scan flagged an issue.",
 ];
 
+// A couple of hospitals take a refundable deposit (with a callback-time
+// guarantee) so the KYC -> Razorpay -> SLA-refund path is demoable out of the box.
+const DEPOSIT_CONFIG: Record<string, { depositRequired: boolean; depositAmountSurgery: number; depositAmountSecondOpinion: number; slaCallbackHours: number }> = {
+  "sunrise-multispeciality-hospital": { depositRequired: true, depositAmountSurgery: 2000, depositAmountSecondOpinion: 500, slaCallbackHours: 24 },
+  "lotus-heart-and-bone-institute": { depositRequired: true, depositAmountSurgery: 5000, depositAmountSecondOpinion: 1000, slaCallbackHours: 48 },
+};
+
 function pick<T>(arr: T[], i: number): T {
   return arr[((i % arr.length) + arr.length) % arr.length];
 }
@@ -95,10 +102,13 @@ async function main() {
   let doctorNameIdx = 0;
 
   for (const [i, h] of HOSPITALS.entries()) {
+    const deposit = DEPOSIT_CONFIG[h.slug] ?? {};
     const hospital = await prisma.hospital.upsert({
       where: { slug: h.slug },
-      update: {},
+      // Re-seeding an existing DB still picks up deposit config changes.
+      update: { ...deposit },
       create: {
+        ...deposit,
         name: h.name,
         slug: h.slug,
         status: h.status,
@@ -713,7 +723,7 @@ async function main() {
         verifiedAt: spec.status === "VERIFIED" || spec.status === "REFUND_INITIATED" ? new Date(Date.now() - pi * 24 * 60 * 60 * 1000) : null,
       },
     });
-    await prisma.enquiry.update({ where: { id: enquiry.id }, data: { paymentId: payment.id } });
+    await prisma.enquiry.update({ where: { id: enquiry.id }, data: { paymentId: payment.id, paymentRequired: true } });
 
     // Add a refund row for the REFUND_INITIATED payment.
     if (spec.status === "REFUND_INITIATED") {

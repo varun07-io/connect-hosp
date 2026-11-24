@@ -1,7 +1,7 @@
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { ConfirmationResult } from "firebase/auth";
-import { Phone, ShieldCheck, Building2, UserRound, Stethoscope, Loader2 } from "lucide-react";
+import { Phone, ShieldCheck, Building2, UserRound, Stethoscope, Loader2, CalendarCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,12 +11,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth, type DevUser } from "@/context/AuthContext";
 import { getFirebaseAuth, firebaseConfigured } from "@/lib/firebase";
 import { apiFetch, ApiError } from "@/lib/apiClient";
-import { ROLE_HOME, ROLE_LABEL } from "@/lib/roles";
+import { ROLE_LABEL } from "@/lib/roles";
+import { postLoginPath } from "@/lib/redirect";
 import { initials } from "@/lib/utils";
 
 export function Login() {
   const { isDevMode, devUsers, selectDevUser } = useAuth();
   const navigate = useNavigate();
+  const next = useSearchParams()[0].get("next");
+  const continuingBooking = Boolean(next?.includes("book="));
   const [switchingId, setSwitchingId] = React.useState<string | null>(null);
 
   async function handleDevSelect(user: DevUser) {
@@ -27,7 +30,7 @@ export function Login() {
       // route's role guard renders immediately on navigate() and would
       // otherwise see no session yet (or briefly, the previous one).
       await selectDevUser(user.id);
-      navigate(ROLE_HOME[user.role]);
+      navigate(postLoginPath(user.role, next));
     } finally {
       setSwitchingId(null);
     }
@@ -41,6 +44,7 @@ export function Login() {
 
     return (
       <div className="container flex min-h-[70vh] flex-col items-center justify-center py-12">
+        {continuingBooking && <BookingContinueNotice />}
         <div className="mb-6 text-center">
           <h1 className="font-display text-2xl font-bold">Dev login switcher</h1>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">
@@ -89,7 +93,8 @@ export function Login() {
   }
 
   return (
-    <div className="container flex min-h-[70vh] items-center justify-center py-12">
+    <div className="container flex min-h-[70vh] flex-col items-center justify-center py-12">
+      {continuingBooking && <BookingContinueNotice />}
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Log in to Connect Hospital</CardTitle>
@@ -120,6 +125,7 @@ function PatientOtpLogin() {
   const [loading, setLoading] = React.useState(false);
   const confirmationRef = React.useRef<ConfirmationResult | null>(null);
   const navigate = useNavigate();
+  const next = useSearchParams()[0].get("next");
   const { refreshMe } = useAuth();
 
   async function sendOtp(e: React.FormEvent) {
@@ -155,7 +161,7 @@ function PatientOtpLogin() {
       // the destination route's role guard render with no session yet.
       const me = await refreshMe();
       if (me) {
-        navigate(ROLE_HOME.PATIENT);
+        navigate(postLoginPath(me.user.role, next));
       } else {
         setStep("profile");
       }
@@ -173,7 +179,7 @@ function PatientOtpLogin() {
     try {
       await apiFetch("/api/auth/register-patient", { method: "POST", body: JSON.stringify({ name, city }) });
       await refreshMe();
-      navigate(ROLE_HOME.PATIENT);
+      navigate(postLoginPath("PATIENT", next));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not complete sign-up");
     } finally {
@@ -247,6 +253,7 @@ function StaffLogin() {
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const navigate = useNavigate();
+  const next = useSearchParams()[0].get("next");
   const { refreshMe } = useAuth();
 
   async function submit(e: React.FormEvent) {
@@ -259,7 +266,7 @@ function StaffLogin() {
       await signInWithEmailAndPassword(auth, email, password);
       const me = await refreshMe();
       if (me) {
-        navigate(ROLE_HOME[me.user.role]);
+        navigate(postLoginPath(me.user.role, next));
       } else {
         setError("No Connect Hospital account is linked to this login yet. Ask your Super Admin to provision one.");
       }
@@ -290,5 +297,17 @@ function StaffLogin() {
         <Stethoscope className="h-4 w-4" /> Sign in
       </Button>
     </form>
+  );
+}
+
+function BookingContinueNotice() {
+  return (
+    <div className="mb-6 flex w-full max-w-md items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+      <CalendarCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary-700" />
+      <p>
+        <span className="font-semibold">Log in to continue your booking.</span> We'll take you straight back to the
+        hospital to finish your request.
+      </p>
+    </div>
   );
 }

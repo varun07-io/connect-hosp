@@ -3,10 +3,12 @@ import { apiFetch } from "@/lib/apiClient";
 import type {
   AdminOverviewResponse,
   AuditLogItem,
+  EnquiryDetail,
   EnquiryListItem,
   HospitalMeResponse,
   HospitalProfileResponse,
   HospitalSearchResponse,
+  KycSummary,
   MedicalRecordItem,
   SupportTicketItem,
   Treatment,
@@ -61,8 +63,22 @@ export function usePatientEnquiries() {
   return useQuery({ queryKey: ["patient", "enquiries"], queryFn: () => apiFetch<EnquiryListItem[]>("/api/patient/enquiries") });
 }
 
-export function usePatientRecords() {
-  return useQuery({ queryKey: ["patient", "records"], queryFn: () => apiFetch<MedicalRecordItem[]>("/api/patient/records") });
+export function usePatientEnquiry(id: string | undefined) {
+  return useQuery({
+    queryKey: ["patient", "enquiries", id],
+    queryFn: () => apiFetch<EnquiryDetail>(`/api/patient/enquiries/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+/** Shares the "kyc-me" cache key with the KYC page, so verifying there
+ *  immediately unlocks record-sharing and deposits in the booking flow. */
+export function useMyKyc(enabled = true) {
+  return useQuery({ queryKey: ["kyc-me"], queryFn: () => apiFetch<KycSummary>("/api/kyc/me"), enabled });
+}
+
+export function usePatientRecords(enabled = true) {
+  return useQuery({ queryKey: ["patient", "records"], queryFn: () => apiFetch<MedicalRecordItem[]>("/api/patient/records"), enabled });
 }
 
 export function useHospitalMe() {

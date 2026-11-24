@@ -10,6 +10,7 @@ import { NotFound } from "@/pages/public/NotFound";
 
 import { PatientLayout } from "@/pages/patient/PatientLayout";
 import { PatientEnquiries } from "@/pages/patient/PatientEnquiries";
+import { PatientEnquiryDetail } from "@/pages/patient/PatientEnquiryDetail";
 import { PatientVault } from "@/pages/patient/PatientVault";
 import { PatientPayments } from "@/pages/patient/PatientPayments";
 
@@ -51,6 +52,7 @@ export default function App() {
 
         <Route path="/patient" element={<PatientLayout />}>
           <Route index element={<PatientEnquiries />} />
+          <Route path="enquiries/:id" element={<PatientEnquiryDetail />} />
           <Route path="vault" element={<PatientVault />} />
           <Route path="kyc" element={<PatientKyc />} />
           <Route path="payments" element={<PatientPayments />} />

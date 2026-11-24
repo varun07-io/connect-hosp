@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, Search, X, ShieldCheck, Wallet, PhoneCall } from "lucide-react";
+import { SlidersHorizontal, Search, X, ShieldCheck, Wallet, PhoneCall, HeartHandshake } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,7 @@ const SORT_LABELS: Record<string, string> = {
 const TRUST_POINTS = [
   { icon: ShieldCheck, text: "Every hospital verified before listing" },
   { icon: Wallet, text: "Transparent, indicative pricing" },
-  { icon: PhoneCall, text: "Free callback from a hospital doctor" },
+  { icon: PhoneCall, text: "Guaranteed callback from a hospital doctor" },
 ];
 
 export function SearchResults() {
@@ -46,6 +46,8 @@ export function SearchResults() {
     minRating: searchParams.get("minRating") ? Number(searchParams.get("minRating")) : undefined,
   };
   const sort = searchParams.get("sort") ?? "recommended";
+  // "Get a second opinion" entry point — carried through filters and onto each card.
+  const secondOpinion = searchParams.get("intent") === "second-opinion";
 
   const { data, isFetching } = useHospitalSearch({
     city: filters.city || undefined,
@@ -69,12 +71,20 @@ export function SearchResults() {
     if (merged.maxBudget !== undefined) p.set("maxBudget", String(merged.maxBudget));
     if (merged.minRating !== undefined) p.set("minRating", String(merged.minRating));
     if (sort !== "recommended") p.set("sort", sort);
+    if (secondOpinion) p.set("intent", "second-opinion");
     setSearchParams(p);
   }
 
   function clearAll() {
     const p = new URLSearchParams();
     if (sort !== "recommended") p.set("sort", sort);
+    if (secondOpinion) p.set("intent", "second-opinion");
+    setSearchParams(p);
+  }
+
+  function exitSecondOpinion() {
+    const p = new URLSearchParams(searchParams);
+    p.delete("intent");
     setSearchParams(p);
   }
 
@@ -137,6 +147,23 @@ export function SearchResults() {
       </div>
 
       <div className="container py-6">
+        {secondOpinion && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 p-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+              <HeartHandshake className="h-4 w-4" />
+            </span>
+            <div className="flex-1 text-sm">
+              <p className="font-semibold text-primary-900">Getting a second opinion</p>
+              <p className="mt-0.5 text-primary-800">
+                Pick a hospital and a specialist will review your diagnosis with you over a call — before you commit to
+                any procedure. Filter by the procedure you've been advised.
+              </p>
+            </div>
+            <button onClick={exitSecondOpinion} className="rounded-md p-1 text-primary-700 hover:bg-primary-100" aria-label="Exit second opinion mode">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
           {/* Desktop filter rail — sticky so it stays reachable while scrolling results */}
           <aside className="hidden lg:block">
@@ -211,7 +238,9 @@ export function SearchResults() {
 
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {!data && isFetching && Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[340px] rounded-xl" />)}
-              {data?.items.map((hospital) => <HospitalCard key={hospital.id} hospital={hospital} />)}
+              {data?.items.map((hospital) => (
+                <HospitalCard key={hospital.id} hospital={hospital} intent={secondOpinion ? "SECOND_OPINION" : "SURGERY"} />
+              ))}
             </div>
 
             {data && data.items.length === 0 && (

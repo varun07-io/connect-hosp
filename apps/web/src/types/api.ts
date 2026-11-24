@@ -82,11 +82,14 @@ export interface HospitalProfileResponse {
   depositRequired: boolean;
   depositAmountSurgery: number;
   depositAmountSecondOpinion: number;
+  slaCallbackHours: number;
   doctors: DoctorSummary[];
   treatmentPrices: HospitalTreatmentPrice[];
   reviews: Review[];
   avgRating: number | null;
 }
+
+export type PaymentStatus = "PENDING" | "VERIFIED" | "FAILED" | "REFUND_INITIATED" | "REFUNDED";
 
 export interface EnquiryListItem {
   id: string;
@@ -95,10 +98,60 @@ export interface EnquiryListItem {
   condition: string;
   preferredCallbackWindow: string;
   createdAt: string;
-  hospital?: { name: string; slug: string };
+  updatedAt?: string;
+  paymentRequired?: boolean;
+  hospital?: { name: string; slug: string; city?: string; depositRequired?: boolean };
   patient?: { name: string; phone: string | null };
   treatment?: { name: string } | null;
   assignedDoctor?: { user: { name: string } } | null;
+  payment?: { status: PaymentStatus; amount: number } | null;
+}
+
+export interface EnquiryDetail {
+  id: string;
+  intent: EnquiryIntent;
+  status: EnquiryStatus;
+  condition: string;
+  preferredCallbackWindow: string;
+  callbackOutcome: "REACHED" | "NOT_REACHED" | "CALL_BACK_LATER" | null;
+  callbackNotes: string | null;
+  paymentRequired: boolean;
+  createdAt: string;
+  updatedAt: string;
+  hospital: {
+    name: string;
+    slug: string;
+    city: string;
+    address: string;
+    depositRequired: boolean;
+    depositAmountSurgery: number;
+    depositAmountSecondOpinion: number;
+    slaCallbackHours: number;
+  };
+  treatment: { name: string; category: string } | null;
+  assignedDoctor: {
+    specialisation: string;
+    qualifications: string;
+    experienceYears: number;
+    user: { name: string };
+  } | null;
+  statusHistory: { id: string; fromStatus: EnquiryStatus | null; toStatus: EnquiryStatus; note: string | null; createdAt: string }[];
+  attachments: { medicalRecord: { id: string; title: string; category: string } }[];
+  payment: {
+    id: string;
+    amount: number;
+    currency: string;
+    status: PaymentStatus;
+    verifiedAt: string | null;
+    refunds: { id: string; amount: number; status: string; reason: string; createdAt: string }[];
+  } | null;
+}
+
+export interface KycSummary {
+  id?: string;
+  status: "UNVERIFIED" | "PENDING" | "VERIFIED" | "REJECTED";
+  documents: { id: string; docType: string }[];
+  rejectedReason?: string | null;
 }
 
 export interface MedicalRecordItem {

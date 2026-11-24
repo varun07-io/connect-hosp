@@ -31,12 +31,31 @@ export function useCreateEnquiry() {
       preferredCallbackWindow: string;
       recordIds?: string[];
       consentAccepted: true;
-    }) => apiFetch("/api/patient/enquiries", { method: "POST", body: JSON.stringify({ recordIds: [], ...input }) }),
+    }) => apiFetch<{ id: string }>("/api/patient/enquiries", { method: "POST", body: JSON.stringify({ recordIds: [], ...input }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patient", "enquiries"] });
-      toast({ title: "Enquiry sent", description: "The hospital has been notified — a doctor will call you soon.", variant: "success" });
     },
     onError: (err) => toast({ title: "Couldn't send enquiry", description: errorMessage(err), variant: "destructive" }),
+  });
+}
+
+export function useCancelEnquiry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ enquiryId, reason }: { enquiryId: string; reason?: string }) =>
+      apiFetch<{ ok: true; refundQueued: boolean }>(`/api/patient/enquiries/${enquiryId}/cancel`, {
+        method: "PATCH",
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["patient"] });
+      toast({
+        title: "Enquiry cancelled",
+        description: data.refundQueued ? "Your deposit refund has been initiated — it usually lands in 5–7 working days." : "The hospital has been informed.",
+        variant: "success",
+      });
+    },
+    onError: (err) => toast({ title: "Couldn't cancel enquiry", description: errorMessage(err), variant: "destructive" }),
   });
 }
 
