@@ -47,6 +47,7 @@ export interface DecodedFirebaseToken {
   uid: string;
   phone?: string;
   email?: string;
+  emailVerified?: boolean;
 }
 
 /** Verifies a bearer token independent of whether a User row exists yet —
@@ -56,7 +57,7 @@ export async function verifyFirebaseBearerToken(authHeader: string | undefined):
   const token = authHeader.slice("Bearer ".length);
   try {
     const decoded = await getAuth().verifyIdToken(token);
-    return { uid: decoded.uid, phone: decoded.phone_number, email: decoded.email };
+    return { uid: decoded.uid, phone: decoded.phone_number, email: decoded.email, emailVerified: decoded.email_verified === true };
   } catch {
     return null;
   }
@@ -84,7 +85,20 @@ async function resolveAuthUser(app: FastifyInstance, request: FastifyRequest): P
   const decoded = await verifyFirebaseBearerToken(request.headers.authorization);
   if (!decoded) return null;
 
-  const user = await app.prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
+  let user = await app.prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
+
+  // Staff invited by a hospital admin (e.g. doctors) are created with a
+  // placeholder `invite:<email>` uid. The first sign-in with that *verified*
+  // email claims the account. Unverified emails never claim — otherwise anyone
+  // could register the address with Firebase and take over the invite.
+  if (!user && decoded.email && decoded.emailVerified) {
+    const email = decoded.email.toLowerCase();
+    const invited = await app.prisma.user.findFirst({ where: { email, firebaseUid: `invite:${email}` } });
+    if (invited) {
+      user = await app.prisma.user.update({ where: { id: invited.id }, data: { firebaseUid: decoded.uid } });
+    }
+  }
+
   if (!user || user.status !== "ACTIVE") return null;
   return {
     id: user.id,

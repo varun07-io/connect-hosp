@@ -263,7 +263,7 @@ export function Home() {
               manage doctors, prices and enquiries.
             </p>
           </div>
-          <Button variant="accent" size="lg" onClick={() => navigate("/login")}>
+          <Button variant="accent" size="lg" onClick={() => navigate("/list-your-hospital")}>
             <Stethoscope className="h-4 w-4" />
             List your hospital for free
           </Button>

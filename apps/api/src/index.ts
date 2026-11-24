@@ -19,6 +19,7 @@ import authBootstrapRoutes from "./routes/authBootstrap.js";
 import fieldExecutiveRoutes from "./routes/fieldExecutive.js";
 import paymentsRoutes from "./routes/payments.js";
 import kycRoutes from "./routes/kyc.js";
+import hospitalManageRoutes from "./routes/hospitalManage.js";
 import { runSlaRefundJob } from "./lib/slaRefundJob.js";
 
 declare module "fastify" {
@@ -72,6 +73,7 @@ await app.register(authBootstrapRoutes);
 await app.register(fieldExecutiveRoutes);
 await app.register(paymentsRoutes);
 await app.register(kycRoutes);
+await app.register(hospitalManageRoutes);
 
 app
   .listen({ port: env.PORT, host: "0.0.0.0" })

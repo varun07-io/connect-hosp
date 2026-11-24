@@ -17,15 +17,15 @@ export function PublicFooter() {
           <h4 className="mb-3 text-sm font-semibold">Patients</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/search" className="hover:text-foreground">Find a hospital</Link></li>
-            <li><Link to="/search" className="hover:text-foreground">Compare surgery costs</Link></li>
-            <li><Link to="/login" className="hover:text-foreground">My enquiries</Link></li>
+            <li><Link to="/compare" className="hover:text-foreground">Compare surgery costs</Link></li>
+            <li><Link to="/patient" className="hover:text-foreground">My enquiries</Link></li>
           </ul>
         </div>
         <div>
           <h4 className="mb-3 text-sm font-semibold">Hospitals</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link to="/login" className="hover:text-foreground">Register your hospital</Link></li>
-            <li><Link to="/login" className="hover:text-foreground">Hospital dashboard</Link></li>
+            <li><Link to="/list-your-hospital" className="hover:text-foreground">Register your hospital</Link></li>
+            <li><Link to="/hospital" className="hover:text-foreground">Hospital dashboard</Link></li>
           </ul>
         </div>
         <div>

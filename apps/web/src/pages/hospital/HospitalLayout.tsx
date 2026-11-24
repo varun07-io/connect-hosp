@@ -1,10 +1,13 @@
-import { LayoutGrid, ClipboardList } from "lucide-react";
+import { LayoutGrid, Inbox, Stethoscope, Wallet, Settings } from "lucide-react";
 import { RequireRole } from "@/components/auth/RequireRole";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 
 const NAV = [
   { label: "Overview", to: "/hospital", icon: LayoutGrid, end: true },
-  { label: "Enquiries", to: "/hospital/enquiries", icon: ClipboardList },
+  { label: "Enquiry inbox", to: "/hospital/enquiries", icon: Inbox },
+  { label: "Doctors", to: "/hospital/doctors", icon: Stethoscope },
+  { label: "Prices", to: "/hospital/prices", icon: Wallet },
+  { label: "Settings", to: "/hospital/settings", icon: Settings },
 ];
 
 export function HospitalLayout() {

@@ -2,12 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/apiClient";
 import { toast } from "@/hooks/useToast";
 import type { EnquiryIntent, CallbackOutcome } from "@connect-hospital/shared";
+import type { HospitalDoctor } from "@/types/api";
 
-export interface HospitalDoctorOption {
-  id: string;
-  specialisation: string;
-  user: { name: string };
-}
+export type HospitalDoctorOption = HospitalDoctor;
 
 function errorMessage(err: unknown) {
   return err instanceof ApiError ? err.message : "Something went wrong — please try again.";
@@ -64,7 +61,7 @@ export function useAcknowledgeEnquiry() {
   return useMutation({
     mutationFn: (enquiryId: string) => apiFetch(`/api/hospital/enquiries/${enquiryId}/acknowledge`, { method: "PATCH" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hospital", "enquiries"] });
+      queryClient.invalidateQueries({ queryKey: ["hospital"] });
       toast({ title: "Enquiry acknowledged", variant: "success" });
     },
     onError: (err) => toast({ title: "Couldn't acknowledge enquiry", description: errorMessage(err), variant: "destructive" }),
@@ -77,7 +74,7 @@ export function useAssignEnquiry() {
     mutationFn: ({ enquiryId, doctorId }: { enquiryId: string; doctorId: string }) =>
       apiFetch(`/api/hospital/enquiries/${enquiryId}/assign`, { method: "PATCH", body: JSON.stringify({ doctorId }) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hospital", "enquiries"] });
+      queryClient.invalidateQueries({ queryKey: ["hospital"] });
       toast({ title: "Doctor assigned", description: "They've been notified and will call the patient.", variant: "success" });
     },
     onError: (err) => toast({ title: "Couldn't assign doctor", description: errorMessage(err), variant: "destructive" }),

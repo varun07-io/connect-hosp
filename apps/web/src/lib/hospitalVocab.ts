@@ -1,0 +1,32 @@
+export const SPECIALITY_SUGGESTIONS = [
+  "Orthopaedics",
+  "Cardiology",
+  "General Surgery",
+  "Neurology",
+  "Ophthalmology",
+  "Urology",
+  "Gynaecology",
+  "Oncology",
+  "ENT",
+  "Gastroenterology",
+  "Nephrology",
+  "Paediatrics",
+  "Plastic Surgery",
+  "Pulmonology",
+];
+
+export const FACILITY_SUGGESTIONS = [
+  "24x7 Emergency",
+  "ICU",
+  "Pharmacy",
+  "Diagnostic Lab",
+  "Ambulance Service",
+  "Blood Bank",
+  "Cashless Insurance",
+  "Modular OT",
+  "Cath Lab",
+  "MRI",
+  "CT Scan",
+  "Dialysis",
+  "Parking",
+];

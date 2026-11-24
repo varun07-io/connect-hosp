@@ -12,7 +12,7 @@ import { initials } from "@/lib/utils";
 const NAV_LINKS = [
   { to: "/search", label: "Find a hospital", icon: Building2 },
   { to: "/search?intent=second-opinion", label: "Get a second opinion", icon: HeartHandshake },
-  { to: "/#for-hospitals", label: "For hospitals", icon: User },
+  { to: "/list-your-hospital", label: "For hospitals", icon: User },
 ];
 
 export function PublicHeader() {

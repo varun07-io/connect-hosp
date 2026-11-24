@@ -7,6 +7,7 @@ import { SearchResults } from "@/pages/public/SearchResults";
 import { HospitalProfile } from "@/pages/public/HospitalProfile";
 import { Login } from "@/pages/public/Login";
 import { Compare } from "@/pages/public/Compare";
+import { RegisterHospital } from "@/pages/public/RegisterHospital";
 import { NotFound } from "@/pages/public/NotFound";
 
 import { PatientLayout } from "@/pages/patient/PatientLayout";
@@ -18,6 +19,9 @@ import { PatientPayments } from "@/pages/patient/PatientPayments";
 import { HospitalLayout } from "@/pages/hospital/HospitalLayout";
 import { HospitalOverview } from "@/pages/hospital/HospitalOverview";
 import { HospitalEnquiries } from "@/pages/hospital/HospitalEnquiries";
+import { HospitalDoctors } from "@/pages/hospital/HospitalDoctors";
+import { HospitalPrices } from "@/pages/hospital/HospitalPrices";
+import { HospitalSettings } from "@/pages/hospital/HospitalSettings";
 
 import { DoctorLayout } from "@/pages/doctor/DoctorLayout";
 import { DoctorEnquiries } from "@/pages/doctor/DoctorEnquiries";
@@ -49,6 +53,7 @@ export default function App() {
           <Route path="/search" element={<SearchResults />} />
           <Route path="/hospitals/:slug" element={<HospitalProfile />} />
           <Route path="/compare" element={<Compare />} />
+          <Route path="/list-your-hospital" element={<RegisterHospital />} />
           <Route path="/login" element={<Login />} />
         </Route>
 
@@ -63,6 +68,9 @@ export default function App() {
         <Route path="/hospital" element={<HospitalLayout />}>
           <Route index element={<HospitalOverview />} />
           <Route path="enquiries" element={<HospitalEnquiries />} />
+          <Route path="doctors" element={<HospitalDoctors />} />
+          <Route path="prices" element={<HospitalPrices />} />
+          <Route path="settings" element={<HospitalSettings />} />
         </Route>
 
         <Route path="/doctor" element={<DoctorLayout />}>
