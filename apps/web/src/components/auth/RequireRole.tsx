@@ -1,17 +1,19 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import type { Role } from "@connect-hospital/shared";
 import { useAuth } from "@/context/AuthContext";
 import { ShieldAlert } from "lucide-react";
+import { loginPathFor } from "@/lib/redirect";
 
 export function RequireRole({ roles, children }: { roles: Role[]; children: React.ReactNode }) {
   const { me, isLoading, isAuthenticated } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
 
   if (!isAuthenticated || !me) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginPathFor(location.pathname + location.search)} replace />;
   }
 
   if (!roles.includes(me.user.role)) {

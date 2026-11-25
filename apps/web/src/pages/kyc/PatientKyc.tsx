@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, Upload, Trash2, CheckCircle, Clock, XCircle, Link2, FileText, Loader2 } from "lucide-react";
+import { ArrowRight, ShieldCheck, Upload, Trash2, CheckCircle, Clock, XCircle, Link2, FileText, Loader2 } from "lucide-react";
 import { apiFetch, getAuthHeader } from "@/lib/apiClient";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,6 +47,8 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export function PatientKyc() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  // Set by the booking flow when a deposit is blocked on ID verification.
+  const returnTo = (useLocation().state as { returnTo?: string } | null)?.returnTo;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadMethod, setUploadMethod] = useState<"manual" | "digilocker">("manual");
@@ -123,7 +126,24 @@ export function PatientKyc() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="My KYC" description="Verify your identity to unlock all platform features." />
+      <PageHeader
+        title="Verify your identity"
+        description="A one-time ID check that unlocks secure sharing of your medical reports with doctors."
+      />
+
+      {returnTo && (
+        <div className="flex flex-col gap-3 rounded-xl border border-primary-200 bg-primary-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-primary-900">
+            <span className="font-semibold">Your booking request is saved.</span> Upload one ID below and submit — once it's
+            verified you can pay the deposit from your request page.
+          </p>
+          <Button asChild size="sm" variant="outline" className="shrink-0 bg-background">
+            <Link to={returnTo}>
+              Back to my request <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* Status card */}
       <Card>

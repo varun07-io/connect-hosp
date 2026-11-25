@@ -48,6 +48,23 @@ export async function apiFetchWithRetry<T>(path: string, init?: RequestInit, att
   throw lastError;
 }
 
+/** The API sends either a string or zod's `flatten()` shape
+ *  ({ formErrors: string[], fieldErrors: { field: string[] } }) — turn the
+ *  latter into one readable sentence instead of "[object Object]". */
+function readableError(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const { formErrors = [], fieldErrors = {} } = error as { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+    const field = Object.entries(fieldErrors).find(([, msgs]) => msgs?.length);
+    if (formErrors[0]) return formErrors[0];
+    if (field) {
+      const label = field[0].replace(/([A-Z])/g, " $1").toLowerCase();
+      return `${label.charAt(0).toUpperCase()}${label.slice(1)}: ${field[1][0]}`;
+    }
+  }
+  return "Request failed";
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeader = await getAuthHeader();
   const response = await fetch(`${API_URL}${path}`, {
@@ -64,7 +81,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
-    throw new ApiError(response.status, body.error ?? "Request failed");
+    throw new ApiError(response.status, readableError(body.error));
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;

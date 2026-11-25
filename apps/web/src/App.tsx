@@ -6,16 +6,24 @@ import { Home } from "@/pages/public/Home";
 import { SearchResults } from "@/pages/public/SearchResults";
 import { HospitalProfile } from "@/pages/public/HospitalProfile";
 import { Login } from "@/pages/public/Login";
+import { Compare } from "@/pages/public/Compare";
+import { RegisterHospital } from "@/pages/public/RegisterHospital";
+import { GovtHospitals } from "@/pages/public/GovtHospitals";
+import { GovtHospitalDetail } from "@/pages/public/GovtHospitalDetail";
 import { NotFound } from "@/pages/public/NotFound";
 
 import { PatientLayout } from "@/pages/patient/PatientLayout";
 import { PatientEnquiries } from "@/pages/patient/PatientEnquiries";
+import { PatientEnquiryDetail } from "@/pages/patient/PatientEnquiryDetail";
 import { PatientVault } from "@/pages/patient/PatientVault";
 import { PatientPayments } from "@/pages/patient/PatientPayments";
 
 import { HospitalLayout } from "@/pages/hospital/HospitalLayout";
 import { HospitalOverview } from "@/pages/hospital/HospitalOverview";
 import { HospitalEnquiries } from "@/pages/hospital/HospitalEnquiries";
+import { HospitalDoctors } from "@/pages/hospital/HospitalDoctors";
+import { HospitalPrices } from "@/pages/hospital/HospitalPrices";
+import { HospitalSettings } from "@/pages/hospital/HospitalSettings";
 
 import { DoctorLayout } from "@/pages/doctor/DoctorLayout";
 import { DoctorEnquiries } from "@/pages/doctor/DoctorEnquiries";
@@ -29,6 +37,7 @@ import { SupportTickets } from "@/pages/support/SupportTickets";
 import { AdminLayout } from "@/pages/admin/AdminLayout";
 import { AdminOverview } from "@/pages/admin/AdminOverview";
 import { AdminAuditLog } from "@/pages/admin/AdminAuditLog";
+import { AdminGovtHospitals } from "@/pages/admin/AdminGovtHospitals";
 
 import { FeLayout } from "@/pages/fe/FeLayout";
 import { FeDashboard } from "@/pages/fe/FeDashboard";
@@ -46,11 +55,16 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/hospitals/:slug" element={<HospitalProfile />} />
+          <Route path="/compare" element={<Compare />} />
+          <Route path="/list-your-hospital" element={<RegisterHospital />} />
+          <Route path="/government-hospitals" element={<GovtHospitals />} />
+          <Route path="/government-hospitals/:id" element={<GovtHospitalDetail />} />
           <Route path="/login" element={<Login />} />
         </Route>
 
         <Route path="/patient" element={<PatientLayout />}>
           <Route index element={<PatientEnquiries />} />
+          <Route path="enquiries/:id" element={<PatientEnquiryDetail />} />
           <Route path="vault" element={<PatientVault />} />
           <Route path="kyc" element={<PatientKyc />} />
           <Route path="payments" element={<PatientPayments />} />
@@ -59,6 +73,9 @@ export default function App() {
         <Route path="/hospital" element={<HospitalLayout />}>
           <Route index element={<HospitalOverview />} />
           <Route path="enquiries" element={<HospitalEnquiries />} />
+          <Route path="doctors" element={<HospitalDoctors />} />
+          <Route path="prices" element={<HospitalPrices />} />
+          <Route path="settings" element={<HospitalSettings />} />
         </Route>
 
         <Route path="/doctor" element={<DoctorLayout />}>
@@ -76,6 +93,9 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminOverview />} />
           <Route path="audit-log" element={<AdminAuditLog />} />
+          <Route path="govt-hospitals" element={<AdminGovtHospitals />} />
+          <Route path="verification" element={<VerificationQueue />} />
+          <Route path="support" element={<SupportTickets />} />
           <Route path="kyc" element={<KycReviewQueue />} />
         </Route>
 

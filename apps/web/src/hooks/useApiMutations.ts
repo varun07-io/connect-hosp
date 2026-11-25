@@ -2,12 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/apiClient";
 import { toast } from "@/hooks/useToast";
 import type { EnquiryIntent, CallbackOutcome } from "@connect-hospital/shared";
+import type { HospitalDoctor, VerificationDecisionResult } from "@/types/api";
 
-export interface HospitalDoctorOption {
-  id: string;
-  specialisation: string;
-  user: { name: string };
-}
+export type HospitalDoctorOption = HospitalDoctor;
 
 function errorMessage(err: unknown) {
   return err instanceof ApiError ? err.message : "Something went wrong — please try again.";
@@ -31,12 +28,31 @@ export function useCreateEnquiry() {
       preferredCallbackWindow: string;
       recordIds?: string[];
       consentAccepted: true;
-    }) => apiFetch("/api/patient/enquiries", { method: "POST", body: JSON.stringify({ recordIds: [], ...input }) }),
+    }) => apiFetch<{ id: string }>("/api/patient/enquiries", { method: "POST", body: JSON.stringify({ recordIds: [], ...input }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patient", "enquiries"] });
-      toast({ title: "Enquiry sent", description: "The hospital has been notified — a doctor will call you soon.", variant: "success" });
     },
     onError: (err) => toast({ title: "Couldn't send enquiry", description: errorMessage(err), variant: "destructive" }),
+  });
+}
+
+export function useCancelEnquiry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ enquiryId, reason }: { enquiryId: string; reason?: string }) =>
+      apiFetch<{ ok: true; refundQueued: boolean }>(`/api/patient/enquiries/${enquiryId}/cancel`, {
+        method: "PATCH",
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["patient"] });
+      toast({
+        title: "Enquiry cancelled",
+        description: data.refundQueued ? "Your deposit refund has been initiated — it usually lands in 5–7 working days." : "The hospital has been informed.",
+        variant: "success",
+      });
+    },
+    onError: (err) => toast({ title: "Couldn't cancel enquiry", description: errorMessage(err), variant: "destructive" }),
   });
 }
 
@@ -45,7 +61,7 @@ export function useAcknowledgeEnquiry() {
   return useMutation({
     mutationFn: (enquiryId: string) => apiFetch(`/api/hospital/enquiries/${enquiryId}/acknowledge`, { method: "PATCH" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hospital", "enquiries"] });
+      queryClient.invalidateQueries({ queryKey: ["hospital"] });
       toast({ title: "Enquiry acknowledged", variant: "success" });
     },
     onError: (err) => toast({ title: "Couldn't acknowledge enquiry", description: errorMessage(err), variant: "destructive" }),
@@ -58,7 +74,7 @@ export function useAssignEnquiry() {
     mutationFn: ({ enquiryId, doctorId }: { enquiryId: string; doctorId: string }) =>
       apiFetch(`/api/hospital/enquiries/${enquiryId}/assign`, { method: "PATCH", body: JSON.stringify({ doctorId }) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hospital", "enquiries"] });
+      queryClient.invalidateQueries({ queryKey: ["hospital"] });
       toast({ title: "Doctor assigned", description: "They've been notified and will call the patient.", variant: "success" });
     },
     onError: (err) => toast({ title: "Couldn't assign doctor", description: errorMessage(err), variant: "destructive" }),
@@ -82,14 +98,19 @@ export function useDecideVerification() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ hospitalId, decision, reason }: { hospitalId: string; decision: "APPROVED" | "REJECTED" | "INFO_REQUESTED"; reason?: string }) =>
-      apiFetch(`/api/verification/hospitals/${hospitalId}/decision`, { method: "PATCH", body: JSON.stringify({ decision, reason }) }),
+      apiFetch<VerificationDecisionResult>(`/api/verification/hospitals/${hospitalId}/decision`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision, reason }),
+      }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["verification", "queue"] });
-      toast({
-        title: variables.decision === "APPROVED" ? "Hospital approved" : variables.decision === "REJECTED" ? "Hospital rejected" : "Info requested",
-        description: "The hospital has been notified by email.",
-        variant: variables.decision === "APPROVED" ? "success" : "default",
-      });
+      queryClient.invalidateQueries({ queryKey: ["hospitals"] });
+      if (variables.decision !== "APPROVED") {
+        toast({
+          title: variables.decision === "REJECTED" ? "Hospital rejected" : "More information requested",
+          description: "The hospital has been emailed your note.",
+        });
+      }
     },
     onError: (err) => toast({ title: "Couldn't record decision", description: errorMessage(err), variant: "destructive" }),
   });

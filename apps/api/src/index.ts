@@ -19,7 +19,10 @@ import authBootstrapRoutes from "./routes/authBootstrap.js";
 import fieldExecutiveRoutes from "./routes/fieldExecutive.js";
 import paymentsRoutes from "./routes/payments.js";
 import kycRoutes from "./routes/kyc.js";
+import hospitalManageRoutes from "./routes/hospitalManage.js";
+import govtHospitalRoutes from "./routes/govtHospitals.js";
 import { runSlaRefundJob } from "./lib/slaRefundJob.js";
+import { paymentsEnabled, stripPayments } from "./lib/features.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -52,6 +55,11 @@ app.setErrorHandler((error, request, reply) => {
   reply.code(statusCode).send({ error: error.message || "Internal server error" });
 });
 
+// Prototype mode: hide every deposit/payment field from every JSON response.
+if (!paymentsEnabled()) {
+  app.addHook("preSerialization", async (_request, _reply, payload) => stripPayments(payload));
+}
+
 await app.register(cors, { origin: env.WEB_ORIGIN, credentials: true });
 await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB per KYC doc
 await app.register(prismaPlugin);
@@ -72,13 +80,22 @@ await app.register(authBootstrapRoutes);
 await app.register(fieldExecutiveRoutes);
 await app.register(paymentsRoutes);
 await app.register(kycRoutes);
+await app.register(hospitalManageRoutes);
+await app.register(govtHospitalRoutes);
+
+/** Public feature flags so the web app can adapt copy and navigation. */
+app.get("/api/config", async () => ({ paymentsEnabled: paymentsEnabled() }));
 
 app
   .listen({ port: env.PORT, host: "0.0.0.0" })
   .then((address) => {
     app.log.info(`Connect Hospital API listening on ${address}`);
-    // SLA refund check every hour.
-    setInterval(() => runSlaRefundJob(app.prisma).catch((e) => app.log.error(e, "SLA refund job error")), 60 * 60 * 1000);
+    // SLA refund check every hour — only meaningful when deposits exist.
+    if (paymentsEnabled()) {
+      setInterval(() => runSlaRefundJob(app.prisma).catch((e) => app.log.error(e, "SLA refund job error")), 60 * 60 * 1000);
+    } else {
+      app.log.info("Payments disabled (PAYMENTS_ENABLED=false): deposits, payment checks and SLA refunds are off.");
+    }
   })
   .catch((err) => {
     app.log.error(err);

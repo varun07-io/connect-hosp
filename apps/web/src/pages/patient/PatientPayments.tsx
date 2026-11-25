@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { CreditCard, CheckCircle2, Clock, XCircle, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/apiClient";
+import { useAppConfig } from "@/hooks/useApiQueries";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
 
 interface PaymentRecord {
@@ -41,6 +43,20 @@ function fmtDate(iso: string) {
 }
 
 export function PatientPayments() {
+  const { paymentsEnabled } = useAppConfig();
+  if (!paymentsEnabled) {
+    return (
+      <EmptyState
+        icon={CreditCard}
+        title="No payments in this prototype"
+        description="Requests are free — deposits and payments are switched off for now."
+      />
+    );
+  }
+  return <PaymentHistory />;
+}
+
+function PaymentHistory() {
   const { data, isLoading, error } = useQuery<PaymentEnquiry[]>({
     queryKey: ["patient", "payments"],
     queryFn: () => apiFetch("/api/patient/payments"),

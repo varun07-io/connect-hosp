@@ -3,10 +3,12 @@ import { z } from "zod";
 import { getNotificationProvider } from "../lib/notifications/index.js";
 import { recordAudit } from "../lib/audit.js";
 
-const decisionSchema = z.object({
-  decision: z.enum(["APPROVED", "REJECTED", "INFO_REQUESTED"]),
-  reason: z.string().trim().max(2000).optional(),
-});
+const decisionSchema = z
+  .object({
+    decision: z.enum(["APPROVED", "REJECTED", "INFO_REQUESTED"]),
+    reason: z.string().trim().max(2000).optional(),
+  })
+  .refine((v) => v.decision === "APPROVED" || Boolean(v.reason), { message: "A reason is required — it is emailed to the hospital." });
 
 /** VER module — queue (VER-02) plus the approve/reject/info-request decision (VER-03..06). */
 export default async function verificationRoutes(app: FastifyInstance) {
@@ -17,7 +19,7 @@ export default async function verificationRoutes(app: FastifyInstance) {
       return app.prisma.hospital.findMany({
         where: { status: { in: ["PENDING", "IN_REVIEW"] } },
         orderBy: { createdAt: "asc" },
-        include: { _count: { select: { verificationDocs: true } } },
+        include: { _count: { select: { verificationDocs: true, doctors: true, treatmentPrices: true } } },
       });
     },
   );
@@ -50,12 +52,44 @@ export default async function verificationRoutes(app: FastifyInstance) {
         }),
       ]);
 
+      // Approval gives the hospital a way in: its registered contact person
+      // becomes the Hospital Admin. Same invite mechanism as doctors — the
+      // account is claimed on first sign-in with that (verified) email.
+      let admin: { created: boolean; email: string; note?: string } | null = null;
+      if (parsed.data.decision === "APPROVED") {
+        const email = hospital.contactPersonEmail.toLowerCase();
+        const existingAdmin = await app.prisma.user.findFirst({ where: { hospitalId: id, role: "HOSPITAL_ADMIN" } });
+        const emailOwner = await app.prisma.user.findUnique({ where: { email } });
+        if (existingAdmin) {
+          admin = { created: false, email: existingAdmin.email ?? email, note: "This hospital already has an admin account." };
+        } else if (emailOwner) {
+          admin = { created: false, email, note: "This email already belongs to another account — create the admin manually." };
+        } else {
+          const user = await app.prisma.user.create({
+            data: { firebaseUid: `invite:${email}`, role: "HOSPITAL_ADMIN", name: hospital.contactPersonName, email, hospitalId: id },
+          });
+          admin = { created: true, email };
+          await recordAudit(app.prisma, {
+            actorId: request.authUser!.id,
+            action: "HOSPITAL_ADMIN_INVITED",
+            entityType: "User",
+            entityId: user.id,
+            after: { hospitalId: id, email },
+          });
+        }
+      }
+
       const provider = getNotificationProvider();
       const sendResult = await provider.send({
         channel: "EMAIL",
         recipient: hospital.contactPersonEmail,
         template: "verification_decision",
-        data: { hospitalName: hospital.name, decision: parsed.data.decision },
+        data: {
+          hospitalName: hospital.name,
+          decision: parsed.data.decision,
+          ...(parsed.data.reason ? { reason: parsed.data.reason } : {}),
+          ...(admin?.created ? { loginEmail: admin.email } : {}),
+        },
       });
       await app.prisma.notification.create({
         data: {
@@ -77,7 +111,7 @@ export default async function verificationRoutes(app: FastifyInstance) {
         after: { status: nextStatus, reason: parsed.data.reason },
       });
 
-      return { ok: true, status: nextStatus };
+      return { ok: true, status: nextStatus, admin };
     },
   );
 }

@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, Loader2 } from "lucide-react";
-import { apiFetch } from "@/lib/apiClient";
+import type { EnquiryIntent } from "@connect-hospital/shared";
+import { apiFetch, ApiError } from "@/lib/apiClient";
+import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 
@@ -14,6 +16,9 @@ interface RazorpayOrder {
 
 interface Props {
   enquiryId: string;
+  /** Shown on the button so the patient sees exactly what they're paying. */
+  amount?: number;
+  intent?: EnquiryIntent;
   patientName: string;
   patientEmail?: string;
   patientPhone?: string;
@@ -37,8 +42,9 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-export function RazorpayCheckout({ enquiryId, patientName, patientEmail, patientPhone, onSuccess }: Props) {
+export function RazorpayCheckout({ enquiryId, amount, intent, patientName, patientEmail, patientPhone, onSuccess }: Props) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const createOrder = useMutation({
@@ -57,6 +63,7 @@ export function RazorpayCheckout({ enquiryId, patientName, patientEmail, patient
       }),
     onSuccess: () => {
       setIsProcessing(false);
+      queryClient.invalidateQueries({ queryKey: ["patient"] });
       onSuccess();
       toast({ title: "Payment successful", description: "Your deposit has been received." });
     },
@@ -78,9 +85,13 @@ export function RazorpayCheckout({ enquiryId, patientName, patientEmail, patient
     let order: RazorpayOrder;
     try {
       order = await createOrder.mutateAsync();
-    } catch {
+    } catch (err) {
       setIsProcessing(false);
-      toast({ title: "Failed to create payment order", variant: "destructive" });
+      toast({
+        title: "Couldn't start payment",
+        description: err instanceof ApiError ? err.message : "Please try again in a moment.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -90,9 +101,9 @@ export function RazorpayCheckout({ enquiryId, patientName, patientEmail, patient
       currency: order.currency,
       order_id: order.orderId,
       name: "Connect Hospital",
-      description: "Surgery deposit",
+      description: intent === "SECOND_OPINION" ? "Second opinion deposit (refundable)" : "Surgery booking deposit (refundable)",
       prefill: { name: patientName, email: patientEmail, contact: patientPhone },
-      theme: { color: "#2563eb" },
+      theme: { color: "#0f7c82" },
       handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
         verifyPayment.mutate({
           razorpayOrderId: response.razorpay_order_id,
@@ -109,11 +120,11 @@ export function RazorpayCheckout({ enquiryId, patientName, patientEmail, patient
   }
 
   return (
-    <Button onClick={handlePay} disabled={isProcessing} className="w-full">
+    <Button onClick={handlePay} disabled={isProcessing} size="lg" className="w-full">
       {isProcessing ? (
         <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</>
       ) : (
-        <><CreditCard className="h-4 w-4" /> Pay deposit</>
+        <><CreditCard className="h-4 w-4" /> Pay {amount ? formatCurrency(amount) : "deposit"} securely</>
       )}
     </Button>
   );

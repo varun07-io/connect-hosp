@@ -39,22 +39,9 @@ export default async function hospitalDashboardRoutes(app: FastifyInstance) {
           patient: { select: { name: true, phone: true } },
           treatment: { select: { name: true } },
           assignedDoctor: { select: { user: { select: { name: true } } } },
+          payment: { select: { status: true, amount: true } },
+          _count: { select: { attachments: true } },
         },
-      });
-    },
-  );
-
-  app.get(
-    "/api/hospital/doctors",
-    { preHandler: app.requireRole("HOSPITAL_ADMIN") },
-    async (request, reply) => {
-      const hospitalId = request.authUser!.hospitalId;
-      if (!hospitalId) return reply.code(409).send({ error: "This account is not linked to a hospital" });
-      app.assertHospitalScope(request, hospitalId);
-
-      return app.prisma.doctor.findMany({
-        where: { hospitalId },
-        select: { id: true, specialisation: true, user: { select: { name: true } } },
       });
     },
   );

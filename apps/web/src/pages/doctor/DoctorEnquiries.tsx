@@ -53,7 +53,15 @@ export function DoctorEnquiries() {
               <PhoneCall className="h-3.5 w-3.5" /> Log callback
             </Button>
           ) : (
-            <span className="text-xs text-muted-foreground">—</span>
+            <span className="text-xs text-muted-foreground">
+              {item.status === "GUIDED" || item.status === "CLOSED"
+                ? "Callback done — patient guided"
+                : item.status === "NO_RESPONSE"
+                  ? "Patient not reached"
+                  : item.status === "CANCELLED"
+                    ? "Cancelled by patient"
+                    : "No action needed"}
+            </span>
           )
         }
       />

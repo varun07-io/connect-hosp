@@ -608,3 +608,28 @@ model KycDocument {
 
   @@index([kycId])
 }
+
+// ─── Government hospital directory (KASS empanelment list) ──────────────────
+
+/// Public directory of government hospitals, maintained by Excel import
+/// (see routes/govtHospitals.ts). Separate from `Hospital`: these are listings
+/// for discovery, not marketplace partners with doctors, prices or bookings.
+model GovtHospital {
+  id           String   @id @default(cuid())
+  /// Identity across uploads: "ref:<Empanelment Ref-ID>", or
+  /// "name:<name>|<district>|<taluk>" when the row has no Ref-ID.
+  key          String   @unique
+  refId        String?
+  name         String
+  district     String
+  taluk        String?
+  address      String?
+  specialities String[] @default([])
+  subType      String?
+  /// Scheme codes the hospital is empanelled under, e.g. ["KASS"].
+  schemes      String[] @default([])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([district])
+}

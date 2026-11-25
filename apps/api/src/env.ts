@@ -51,6 +51,12 @@ const envSchema = z.object({
   S3_BUCKET_HOSPITAL_DOCS: z.string().optional(),
   S3_BUCKET_PAYMENT_RECEIPTS: z.string().optional(),
 
+  // Master switch for deposits/payments. Off for the prototype: no deposit
+  // prompts, no payment checks, no SLA refund job, and every API response has
+  // deposit/payment fields neutralised (see lib/features.ts). Set "true" to
+  // bring the whole payment flow back — nothing was deleted.
+  PAYMENTS_ENABLED: booleanFromEnv(false),
+
   // Razorpay — required in production when paymentRequired=true hospitals exist.
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search, Stethoscope, ArrowRight, Quote, ShieldCheck, Wallet, PhoneCall, TriangleAlert } from "lucide-react";
+import { Search, Stethoscope, ArrowRight, Quote, ShieldCheck, Wallet, PhoneCall, TriangleAlert, HeartHandshake, Landmark } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CityAutocomplete } from "@/components/shared/CityAutocomplete";
 import { HospitalCard } from "@/components/shared/HospitalCard";
-import { useHospitalSearch } from "@/hooks/useApiQueries";
+import { useAppConfig, useHospitalSearch } from "@/hooks/useApiQueries";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SURGERY_CATEGORIES } from "@/lib/surgeryCategories";
 import { initials } from "@/lib/utils";
@@ -16,8 +17,8 @@ const PILOT_CITIES = ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi"];
 
 const STEPS = [
   { step: "1", title: "Search & compare", desc: "Filter by location, treatment and budget to shortlist hospitals." },
-  { step: "2", title: "Book a visit or opinion", desc: "Share your condition and, if you like, attach medical records." },
-  { step: "3", title: "Get a guided callback", desc: "A hospital doctor calls you within minutes to guide next steps." },
+  { step: "2", title: "Request a callback", desc: "Share your condition and pick a time. Attach reports from your secure vault if you like." },
+  { step: "3", title: "Talk to the doctor", desc: "A hospital doctor calls you at your chosen time to guide your next steps." },
 ];
 
 const TESTIMONIALS = [
@@ -46,6 +47,7 @@ export function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data, isLoading } = useHospitalSearch({ page: 1 });
+  const { paymentsEnabled } = useAppConfig();
 
   useEffect(() => {
     if (!localStorage.getItem(DISCLAIMER_KEY)) {
@@ -151,14 +153,21 @@ export function Home() {
             </div>
           </div>
 
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm text-muted-foreground">
+            Already been advised surgery?{" "}
+            <Link to="/search?intent=second-opinion" className="inline-flex items-center gap-1 font-medium text-primary-700 hover:underline">
+              <HeartHandshake className="h-3.5 w-3.5" /> Get a second opinion first
+            </Link>
+          </p>
+
           {/* Secondary trust signals — kept below the location+procedure panel
               on mobile so that panel stays inside the first viewport; they're
               a short scroll away rather than competing for the same fold. */}
           <div className="mx-auto mt-4 hidden max-w-xl flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:flex">
             {[
               { icon: ShieldCheck, text: "Verified hospitals only" },
-              { icon: Wallet, text: "No booking fee" },
-              { icon: PhoneCall, text: "Free doctor callback" },
+              { icon: Wallet, text: "Free to search & compare" },
+              { icon: PhoneCall, text: paymentsEnabled ? "Callback guarantee" : "Free doctor callback" },
             ].map((t) => (
               <span key={t.text} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <t.icon className="h-3.5 w-3.5 text-primary-600" />
@@ -177,8 +186,8 @@ export function Home() {
               <p className="text-xs text-muted-foreground">Transparent pricing</p>
             </div>
             <div>
-              <p className="font-display text-2xl font-bold text-primary-700">Minutes</p>
-              <p className="text-xs text-muted-foreground">To a guided callback</p>
+              <p className="font-display text-2xl font-bold text-primary-700">{paymentsEnabled ? "Guaranteed" : "Free"}</p>
+              <p className="text-xs text-muted-foreground">{paymentsEnabled ? "Doctor callback, or your deposit back" : "Doctor callback, no booking fee"}</p>
             </div>
           </div>
         </div>
@@ -204,6 +213,28 @@ export function Home() {
             </p>
           )}
         </div>
+      </section>
+
+      <section className="container pb-14">
+        <Link
+          to="/government-hospitals"
+          className="group flex flex-col gap-4 rounded-2xl border border-border bg-gradient-to-r from-primary-50 to-background p-6 transition-shadow hover:shadow-card sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white">
+              <Landmark className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="font-display text-lg font-semibold">Looking for a government hospital?</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Search the KASS empanelled government hospital list by area or speciality — eye, heart, cancer, maternity and more.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary-700">
+            Browse government hospitals <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </Link>
       </section>
 
       <section className="bg-muted/40 py-16">
@@ -255,7 +286,7 @@ export function Home() {
               manage doctors, prices and enquiries.
             </p>
           </div>
-          <Button variant="accent" size="lg" onClick={() => navigate("/login")}>
+          <Button variant="accent" size="lg" onClick={() => navigate("/list-your-hospital")}>
             <Stethoscope className="h-4 w-4" />
             List your hospital for free
           </Button>

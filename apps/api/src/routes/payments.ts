@@ -6,6 +6,7 @@ import { env } from "../env.js";
 import { recordAudit } from "../lib/audit.js";
 import { onBookingPaid } from "../lib/feAssignmentEngine.js";
 import { notifyEnquiry } from "../lib/enquiryEvents.js";
+import { paymentsEnabled } from "../lib/features.js";
 
 function getRazorpay(): Razorpay {
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
@@ -26,6 +27,13 @@ const refundSchema = z.object({
 
 /** Payment module — Razorpay order creation, webhook verification, and refund management. */
 export default async function paymentsRoutes(app: FastifyInstance) {
+  // Prototype mode: every payment endpoint in this (encapsulated) plugin is off.
+  if (!paymentsEnabled()) {
+    app.addHook("onRequest", async (_request, reply) => {
+      return reply.code(404).send({ error: "Payments are switched off in this prototype." });
+    });
+  }
+
   /** Create a Razorpay order for an enquiry deposit. */
   app.post(
     "/api/payments/orders",
@@ -45,8 +53,19 @@ export default async function paymentsRoutes(app: FastifyInstance) {
         include: { hospital: true },
       });
       if (!enquiry) return reply.code(404).send({ error: "Enquiry not found" });
-      if (!enquiry.hospital.depositRequired) return reply.code(400).send({ error: "No deposit required for this hospital" });
-      if (enquiry.paymentId) return reply.code(409).send({ error: "Payment already initiated" });
+      if (!enquiry.paymentRequired) return reply.code(400).send({ error: "No deposit is required for this enquiry" });
+      if (["GUIDED", "CLOSED", "CANCELLED"].includes(enquiry.status)) {
+        return reply.code(409).send({ error: "This enquiry is no longer open for payment" });
+      }
+
+      const existing = enquiry.paymentId
+        ? await app.prisma.payment.findUnique({ where: { id: enquiry.paymentId } })
+        : null;
+      // An abandoned (PENDING) or FAILED attempt can be retried with a fresh
+      // order; anything already paid or refunding cannot.
+      if (existing && !["PENDING", "FAILED"].includes(existing.status)) {
+        return reply.code(409).send({ error: "Deposit already paid for this enquiry" });
+      }
 
       const depositAmount =
         enquiry.intent === "SURGERY"
@@ -60,20 +79,27 @@ export default async function paymentsRoutes(app: FastifyInstance) {
         receipt: enquiry.id,
       });
 
-      const payment = await app.prisma.payment.create({
-        data: {
-          amount: depositAmount,
-          currency: "INR",
-          gateway: "razorpay",
-          gatewayOrderId: order.id,
-          status: "PENDING",
-        },
-      });
+      if (existing) {
+        await app.prisma.payment.update({
+          where: { id: existing.id },
+          data: { amount: depositAmount, gatewayOrderId: order.id, gatewayPaymentId: null, status: "PENDING" },
+        });
+      } else {
+        const payment = await app.prisma.payment.create({
+          data: {
+            amount: depositAmount,
+            currency: "INR",
+            gateway: "razorpay",
+            gatewayOrderId: order.id,
+            status: "PENDING",
+          },
+        });
 
-      await app.prisma.enquiry.update({
-        where: { id: enquiry.id },
-        data: { paymentId: payment.id },
-      });
+        await app.prisma.enquiry.update({
+          where: { id: enquiry.id },
+          data: { paymentId: payment.id },
+        });
+      }
 
       return {
         orderId: order.id,
