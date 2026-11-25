@@ -94,6 +94,8 @@ export default function App() {
           <Route index element={<AdminOverview />} />
           <Route path="audit-log" element={<AdminAuditLog />} />
           <Route path="govt-hospitals" element={<AdminGovtHospitals />} />
+          <Route path="verification" element={<VerificationQueue />} />
+          <Route path="support" element={<SupportTickets />} />
           <Route path="kyc" element={<KycReviewQueue />} />
         </Route>
 

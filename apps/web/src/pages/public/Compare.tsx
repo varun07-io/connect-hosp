@@ -123,7 +123,7 @@ export function Compare() {
     );
   }
 
-  const gridCols = { gridTemplateColumns: `minmax(104px, 180px) repeat(${slugs.length}, minmax(176px, 1fr))` };
+  const gridCols = { gridTemplateColumns: `minmax(92px, 180px) repeat(${slugs.length}, minmax(136px, 1fr))` };
 
   return (
     <div className="bg-muted/20 pb-12">
@@ -147,6 +147,9 @@ export function Compare() {
       </div>
 
       <div className="container py-6">
+        {slugs.length > 2 && (
+          <p className="mb-2 text-xs text-muted-foreground md:hidden">Swipe sideways to see all {slugs.length} hospitals →</p>
+        )}
         <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-soft">
           <div className="min-w-fit">
             {/* Hospital header row */}

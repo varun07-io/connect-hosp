@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/apiClient";
 import { toast } from "@/hooks/useToast";
 import type { EnquiryIntent, CallbackOutcome } from "@connect-hospital/shared";
-import type { HospitalDoctor } from "@/types/api";
+import type { HospitalDoctor, VerificationDecisionResult } from "@/types/api";
 
 export type HospitalDoctorOption = HospitalDoctor;
 
@@ -98,14 +98,19 @@ export function useDecideVerification() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ hospitalId, decision, reason }: { hospitalId: string; decision: "APPROVED" | "REJECTED" | "INFO_REQUESTED"; reason?: string }) =>
-      apiFetch(`/api/verification/hospitals/${hospitalId}/decision`, { method: "PATCH", body: JSON.stringify({ decision, reason }) }),
+      apiFetch<VerificationDecisionResult>(`/api/verification/hospitals/${hospitalId}/decision`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision, reason }),
+      }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["verification", "queue"] });
-      toast({
-        title: variables.decision === "APPROVED" ? "Hospital approved" : variables.decision === "REJECTED" ? "Hospital rejected" : "Info requested",
-        description: "The hospital has been notified by email.",
-        variant: variables.decision === "APPROVED" ? "success" : "default",
-      });
+      queryClient.invalidateQueries({ queryKey: ["hospitals"] });
+      if (variables.decision !== "APPROVED") {
+        toast({
+          title: variables.decision === "REJECTED" ? "Hospital rejected" : "More information requested",
+          description: "The hospital has been emailed your note.",
+        });
+      }
     },
     onError: (err) => toast({ title: "Couldn't record decision", description: errorMessage(err), variant: "destructive" }),
   });

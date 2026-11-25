@@ -250,11 +250,21 @@ export interface VerificationQueueItem {
   id: string;
   name: string;
   city: string;
+  address: string;
+  description: string | null;
+  specialities: string[];
   status: HospitalStatus;
   createdAt: string;
   contactPersonName: string;
+  contactPersonPhone: string;
   contactPersonEmail: string;
-  _count: { verificationDocs: number };
+  _count: { verificationDocs: number; doctors: number; treatmentPrices: number };
+}
+
+export interface VerificationDecisionResult {
+  ok: true;
+  status: HospitalStatus;
+  admin: { created: boolean; email: string; note?: string } | null;
 }
 
 export interface SupportTicketItem {
