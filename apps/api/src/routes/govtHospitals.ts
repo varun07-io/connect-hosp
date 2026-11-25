@@ -19,6 +19,7 @@ const LIST_SELECT = {
   address: true,
   specialities: true,
   subType: true,
+  schemes: true,
   updatedAt: true,
 } as const;
 

@@ -257,8 +257,9 @@ function UploadStep({ onFile, parsing, error, fileName }: { onFile: (f: File) =>
             ))}
           </ul>
           <p className="text-xs text-muted-foreground">
-            <span className="text-destructive">*</span> required. Rows with the same Empanelment Ref-ID (or the same name, district and taluk
-            when there's no Ref-ID) count as duplicates.
+            <span className="text-destructive">*</span> required. No Scheme column? We read it from the title (e.g. “KASS GOVERNMENT
+            HOSPITAL LIST”). Rows with the same Empanelment Ref-ID (or the same name, district and taluk when there's no Ref-ID) count as
+            duplicates.
           </p>
           <Button asChild variant="subtle" className="w-full">
             <a href={SAMPLE_URL} download>
@@ -453,7 +454,7 @@ function ReviewStep({
                 <th className="px-3 py-2.5 font-medium">Hospital</th>
                 <th className="px-3 py-2.5 font-medium">District / Taluk</th>
                 <th className="px-3 py-2.5 font-medium">Specialities</th>
-                <th className="px-3 py-2.5 font-medium">Type</th>
+                <th className="px-3 py-2.5 font-medium">Type / Scheme</th>
                 <th className="px-3 py-2.5 text-right font-medium">Row</th>
               </tr>
             </thead>
@@ -509,6 +510,7 @@ const FIELD_LABEL: Record<string, string> = {
   address: "address",
   specialities: "specialities",
   subType: "type",
+  schemes: "scheme",
 };
 
 function PreviewRow({ c, chosen, onToggle }: { c: ClassifiedRow; chosen: boolean; onToggle: () => void }) {
@@ -552,7 +554,18 @@ function PreviewRow({ c, chosen, onToggle }: { c: ClassifiedRow; chosen: boolean
         <span className="line-clamp-2">{r.specialities.join(", ") || "—"}</span>
         <span className="text-muted-foreground">{r.specialities.length} listed</span>
       </td>
-      <td className="px-3 py-3 text-xs">{r.subType ?? "—"}</td>
+      <td className="px-3 py-3 text-xs">
+        {r.subType ?? "—"}
+        {r.schemes.length > 0 && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {r.schemes.map((s) => (
+              <span key={s} className="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-800">
+                {s}
+              </span>
+            ))}
+          </span>
+        )}
+      </td>
       <td className="whitespace-nowrap px-3 py-3 text-right text-[11px] text-muted-foreground">
         #{r.index}
         <span className="block">

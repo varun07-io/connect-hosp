@@ -1,6 +1,7 @@
 import {
   changedGovtHospitalFields,
   cleanText,
+  detectScheme,
   govtHospitalKey,
   normalizeGovtHospital,
   type GovtHospitalField,
@@ -18,6 +19,7 @@ export const IMPORT_COLUMNS: { field: keyof Omit<GovtHospitalInput, "specialitie
   { field: "address", label: "Address", required: false, example: "Malleshwaram Bangalore", match: /address/ },
   { field: "specialities", label: "Speciality", required: false, example: "GENERAL SURGERY, ENT, ORTHOPAEDICS", match: /special/ },
   { field: "subType", label: "Hospital Sub Type", required: false, example: "Government Hospital", match: /sub ?type|hospital type|^type$|category/ },
+  { field: "schemes", label: "Scheme", required: false, example: "KASS", match: /scheme/ },
 ];
 
 export interface ParsedRow extends GovtHospitalInput {
@@ -73,6 +75,10 @@ function parseTable(sheet: string, table: Cell[][], startIndex: number): { rows:
   };
   let banner = "";
   for (let i = 0; i < headerAt; i++) banner = isBanner(table[i] ?? []) || banner;
+  // No Scheme column? Take it from the title ("KASS GOVERNMENT HOSPITAL LIST")
+  // or the sheet name.
+  const sheetScheme =
+    table.slice(0, headerAt).flat().map(detectScheme).find(Boolean) ?? detectScheme(sheet) ?? null;
   const rows: ParsedRow[] = [];
   for (let i = headerAt + 1; i < table.length; i++) {
     const r = table[i] ?? [];
@@ -92,6 +98,7 @@ function parseTable(sheet: string, table: Cell[][], startIndex: number): { rows:
       address: get(r, "address"),
       specialities: get(r, "specialities"),
       subType: get(r, "subType"),
+      schemes: cleanText(get(r, "schemes")) || sheetScheme || "",
     });
     const errors: string[] = [];
     if (!row.district) errors.push("District is missing");

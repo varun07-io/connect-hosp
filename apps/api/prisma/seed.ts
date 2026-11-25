@@ -657,9 +657,10 @@ async function main() {
 
   console.log("Seeding government hospital directory (KASS, Bengaluru)...");
   for (const raw of KASS_BENGALURU) {
-    const row = normalizeGovtHospital({ ...raw, specialities: raw.speciality });
+    // The source document is the KASS empanelment list.
+    const row = normalizeGovtHospital({ ...raw, specialities: raw.speciality, schemes: "KASS" });
     const key = govtHospitalKey(row);
-    await prisma.govtHospital.upsert({ where: { key }, update: {}, create: { key, ...row } });
+    await prisma.govtHospital.upsert({ where: { key }, update: { schemes: row.schemes }, create: { key, ...row } });
   }
 
   console.log("Seeding support tickets...");

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { initials } from "@/lib/utils";
+import { GlobalSearch } from "@/components/shared/GlobalSearch";
 
 const NAV_LINKS = [
   { to: "/search", label: "Find a hospital", icon: Building2 },
@@ -41,6 +42,7 @@ export function PublicHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <GlobalSearch />
           {isAuthenticated && me ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

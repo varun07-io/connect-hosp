@@ -14,6 +14,8 @@ export interface GovtHospitalInput {
   address: string | null;
   specialities: string[];
   subType: string | null;
+  /** Government schemes the hospital is empanelled under, e.g. ["KASS"]. */
+  schemes: string[];
 }
 
 /** Collapse whitespace (including line breaks inside spreadsheet cells). */
@@ -61,6 +63,41 @@ export function splitSpecialities(raw: unknown): string[] {
   return out;
 }
 
+/** Known government health schemes. Order matters: "Ayushman Bharat – Arogya
+ *  Karnataka" must resolve to AB-ArK before the generic Ayushman/PMJAY rule. */
+export const KNOWN_SCHEMES: { code: string; name: string; match: RegExp }[] = [
+  { code: "KASS", name: "Karnataka Arogya Sanjeevini Scheme", match: /\bkass\b|arogya\s*sanjeevini/i },
+  { code: "AB-ArK", name: "Ayushman Bharat – Arogya Karnataka", match: /ab[\s-]*ark\b|arogya\s*karnataka/i },
+  { code: "AB-PMJAY", name: "Ayushman Bharat PM-JAY", match: /pm[\s-]*jay|ayushman|jan\s*arogya/i },
+  { code: "CGHS", name: "Central Government Health Scheme", match: /\bcghs\b|central\s*government\s*health/i },
+  { code: "ESI", name: "Employees' State Insurance", match: /\besic?\b|employees.?\s*state\s*insurance/i },
+  { code: "Yeshasvini", name: "Yeshasvini Co-operative Farmers Health Care Scheme", match: /yeshasvini/i },
+];
+
+export function schemeName(code: string): string {
+  return KNOWN_SCHEMES.find((s) => s.code === code)?.name ?? code;
+}
+
+/** Recognise a scheme mentioned anywhere in some text (e.g. a sheet title like
+ *  "KASS GOVERNMENT HOSPITAL LIST"). Returns its code, or null. */
+export function detectScheme(text: unknown): string | null {
+  const t = cleanText(text);
+  if (!t) return null;
+  return KNOWN_SCHEMES.find((s) => s.match.test(t))?.code ?? null;
+}
+
+/** Scheme cell → codes. Known schemes are canonicalised; unknown ones kept as written. */
+export function splitSchemes(raw: unknown): string[] {
+  const out: string[] = [];
+  for (const part of String(raw ?? "").split(/[,;\n/]+/)) {
+    const text = cleanText(part);
+    if (!text) continue;
+    const code = detectScheme(text) ?? text;
+    if (!out.includes(code)) out.push(code);
+  }
+  return out;
+}
+
 function keyPart(s: string | null | undefined) {
   return cleanText(s).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -74,7 +111,7 @@ export function govtHospitalKey(row: Pick<GovtHospitalInput, "refId" | "name" | 
 }
 
 /** Fields compared to decide whether an existing hospital would change. */
-export const GOVT_HOSPITAL_FIELDS = ["name", "district", "taluk", "address", "specialities", "subType"] as const;
+export const GOVT_HOSPITAL_FIELDS = ["name", "district", "taluk", "address", "specialities", "subType", "schemes"] as const;
 export type GovtHospitalField = (typeof GOVT_HOSPITAL_FIELDS)[number];
 
 export function changedGovtHospitalFields(
@@ -82,7 +119,7 @@ export function changedGovtHospitalFields(
   after: Omit<GovtHospitalInput, "refId">,
 ): GovtHospitalField[] {
   return GOVT_HOSPITAL_FIELDS.filter((f) => {
-    if (f === "specialities") return before.specialities.join("|") !== after.specialities.join("|");
+    if (f === "specialities" || f === "schemes") return (before[f] ?? []).join("|") !== (after[f] ?? []).join("|");
     return (before[f] ?? "") !== (after[f] ?? "");
   });
 }
@@ -96,6 +133,7 @@ export function normalizeGovtHospital(row: {
   address?: unknown;
   specialities?: unknown;
   subType?: unknown;
+  schemes?: unknown;
 }): GovtHospitalInput {
   const opt = (v: unknown) => cleanText(v) || null;
   return {
@@ -106,6 +144,7 @@ export function normalizeGovtHospital(row: {
     address: opt(row.address),
     specialities: Array.isArray(row.specialities) ? splitSpecialities(row.specialities.join(",")) : splitSpecialities(row.specialities),
     subType: opt(row.subType),
+    schemes: Array.isArray(row.schemes) ? splitSchemes(row.schemes.join(",")) : splitSchemes(row.schemes),
   };
 }
 
@@ -117,6 +156,7 @@ export const govtHospitalRowSchema = z.object({
   address: z.string().max(500).nullable(),
   specialities: z.array(z.string().max(120)).max(80),
   subType: z.string().max(120).nullable(),
+  schemes: z.array(z.string().max(60)).max(20).default([]),
 });
 
 export const govtHospitalImportSchema = z.object({

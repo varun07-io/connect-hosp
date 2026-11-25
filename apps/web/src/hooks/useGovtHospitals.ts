@@ -12,6 +12,7 @@ export interface GovtHospital {
   address: string | null;
   specialities: string[];
   subType: string | null;
+  schemes: string[];
   updatedAt: string;
 }
 

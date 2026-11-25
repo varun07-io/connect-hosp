@@ -9,6 +9,7 @@ import { Login } from "@/pages/public/Login";
 import { Compare } from "@/pages/public/Compare";
 import { RegisterHospital } from "@/pages/public/RegisterHospital";
 import { GovtHospitals } from "@/pages/public/GovtHospitals";
+import { GovtHospitalDetail } from "@/pages/public/GovtHospitalDetail";
 import { NotFound } from "@/pages/public/NotFound";
 
 import { PatientLayout } from "@/pages/patient/PatientLayout";
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/compare" element={<Compare />} />
           <Route path="/list-your-hospital" element={<RegisterHospital />} />
           <Route path="/government-hospitals" element={<GovtHospitals />} />
+          <Route path="/government-hospitals/:id" element={<GovtHospitalDetail />} />
           <Route path="/login" element={<Login />} />
         </Route>
 
